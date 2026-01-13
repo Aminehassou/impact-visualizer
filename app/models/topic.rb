@@ -12,7 +12,7 @@ class Topic < ApplicationRecord
   has_many :articles, through: :article_bags
   has_many :topic_users, dependent: :delete_all
   has_many :users, through: :topic_users
-  has_many :topic_timepoints, dependent: :delete_all
+  has_many :topic_timepoints, dependent: :destroy
   has_many :topic_article_analytics, dependent: :delete_all
   has_many :topic_summaries, dependent: :delete_all
   has_many :topic_editor_topics, dependent: :delete_all
