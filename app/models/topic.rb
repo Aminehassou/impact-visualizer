@@ -8,7 +8,7 @@ class Topic < ApplicationRecord
 
   ## Associations
   belongs_to :wiki
-  has_many :article_bags, -> { order(created_at: :desc) }, dependent: :delete_all
+  has_many :article_bags, -> { order(created_at: :desc) }, dependent: :destroy
   has_many :articles, through: :article_bags
   has_many :topic_users, dependent: :delete_all
   has_many :users, through: :topic_users
