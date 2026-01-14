@@ -240,9 +240,18 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
       domainMax = tmp;
     }
 
-    const yScale: Record<string, number> = {};
-    if (domainMin !== null) yScale.domainMin = domainMin;
-    if (domainMax !== null) yScale.domainMax = domainMax;
+    // calculate padding based on maximum circle radius to prevent clipping
+    const maxCircleRadius = Math.sqrt(1500 / Math.PI); // this is how vega calculates the circle radius
+    const effectiveMin = domainMin !== null && domainMin > 0 ? domainMin : -25;
+    const effectiveMax =
+      domainMax !== null ? domainMax : yAxisAutoDomain.max || 1000;
+    const dataRange = effectiveMax - effectiveMin;
+    const paddingInDataUnits = maxCircleRadius * (dataRange / HEIGHT);
+
+    const yScale: Record<string, number | boolean> = {
+      domainMin: effectiveMin - paddingInDataUnits,
+      domainMax: effectiveMax + paddingInDataUnits,
+    };
 
     const yFilterExprParts: string[] = [];
     const yFieldExpr = `datum[${JSON.stringify(yAxisConfig.currentField)}]`;
@@ -318,7 +327,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
             },
             {
               name: "grid",
-              select: { type: "interval", zoom: true },
+              select: { type: "interval", zoom: true, encodings: ["x"] },
               bind: "scales",
             },
             {
