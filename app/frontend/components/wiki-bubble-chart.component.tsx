@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useMemo, useState } from "react";
 import vegaEmbed, { VisualizationSpec, EmbedOptions, Result } from "vega-embed";
 import CSVButton from "./CSV-button.component";
+import ArticleSearchAutocomplete from "./article-search-autocomplete.component";
+import FilteredArticlesSidebar from "./filtered-articles-sidebar.component";
 import type {
   ArticleAnalytics,
   XAxisKey,
@@ -116,11 +118,6 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<Result | null>(null);
-  // Generating a unique random id for the search container to avoid re-rendering issues
-  const searchContainerId = useMemo(
-    () => `search-container-${Math.random().toString(36).slice(2)}`,
-    []
-  );
   const [selectedGrades, setSelectedGrades] = useState<Record<string, boolean>>(
     {
       FA: true,
@@ -142,6 +139,8 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
     useState<boolean>(false);
   const [filterEditRestriction, setFilterEditRestriction] =
     useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
 
   const yAxisConfig = useMemo(() => {
     switch (yAxisKey) {
@@ -208,6 +207,78 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
     return next;
   }, [rows, xAxisKey]);
 
+  const articleTitles = useMemo(() => {
+    return sortedRows.map((row) => row.article);
+  }, [sortedRows]);
+
+  const filteredArticles = useMemo(() => {
+    const parsedMin =
+      yAxisMinInput.trim() === "" ? null : Number(yAxisMinInput);
+    const parsedMax =
+      yAxisMaxInput.trim() === "" ? null : Number(yAxisMaxInput);
+    let domainMin =
+      parsedMin !== null && Number.isFinite(parsedMin) ? parsedMin : null;
+    let domainMax =
+      parsedMax !== null && Number.isFinite(parsedMax) ? parsedMax : null;
+
+    if (domainMin !== null && domainMax !== null && domainMin > domainMax) {
+      const tmp = domainMin;
+      domainMin = domainMax;
+      domainMax = tmp;
+    }
+
+    return sortedRows.filter((row) => {
+      if (searchTerm.trim()) {
+        const lowerSearch = searchTerm.toLowerCase();
+        if (!row.article.toLowerCase().includes(lowerSearch)) {
+          return false;
+        }
+      }
+
+      const grade = row.assessment_grade;
+      if (grade) {
+        if (!selectedGrades[grade]) {
+          return false;
+        }
+      }
+
+      if (filterMoveRestriction || filterEditRestriction) {
+        if (filterMoveRestriction && filterEditRestriction) {
+          if (!row.has_move_restriction || !row.has_edit_restriction) {
+            return false;
+          }
+        } else if (filterMoveRestriction) {
+          if (!row.has_move_restriction) {
+            return false;
+          }
+        } else if (filterEditRestriction) {
+          if (!row.has_edit_restriction) {
+            return false;
+          }
+        }
+      }
+
+      const yValue = row[yAxisConfig.currentField];
+      if (domainMin !== null && yValue < domainMin) {
+        return false;
+      }
+      if (domainMax !== null && yValue > domainMax) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [
+    sortedRows,
+    searchTerm,
+    selectedGrades,
+    filterMoveRestriction,
+    filterEditRestriction,
+    yAxisMinInput,
+    yAxisMaxInput,
+    yAxisConfig.currentField,
+  ]);
+
   const yAxisAutoDomain = useMemo(() => {
     const values = rows
       .map((row) => row[yAxisConfig.currentField])
@@ -269,6 +340,8 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
       ...(Object.keys(yScale).length ? { scale: yScale } : {}),
     };
 
+    const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
     const spec: VisualizationSpec = {
       $schema: "https://vega.github.io/schema/vega-lite/v5.json",
       height: HEIGHT,
@@ -286,16 +359,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
         },
       },
       params: [
-        {
-          name: "search_input",
-          bind: {
-            input: "search",
-            placeholder: "Article name",
-            name: "Search",
-            element: `#${searchContainerId}`,
-          },
-          value: "",
-        },
+        { name: "search_input", value: escapedSearchTerm },
         { name: "grade_FA", value: selectedGrades.FA },
         { name: "grade_GA", value: selectedGrades.GA },
         { name: "grade_A", value: selectedGrades.A },
@@ -569,7 +633,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
     actions,
     wiki,
     selectedGrades,
-    searchContainerId,
+    searchTerm,
     xAxisKey,
     yAxisConfig,
     yAxisMinInput,
@@ -627,7 +691,11 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
         </div>
 
         <div className="WikiBubbleChartHeaderBox">
-          <div id={searchContainerId} />
+          <ArticleSearchAutocomplete
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            articleTitles={articleTitles}
+          />
         </div>
 
         <div className="WikiBubbleChartHeaderBox">
@@ -720,8 +788,14 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
         </div>
       </div>
 
-      <div>
+      <div className="WikiBubbleChartBody">
         <div className="WikiBubbleChartChartContainer" ref={containerRef} />
+        <FilteredArticlesSidebar
+          articles={filteredArticles}
+          wiki={wiki}
+          isOpen={sidebarOpen}
+          onToggle={() => setSidebarOpen((prev) => !prev)}
+        />
       </div>
 
       {/* Legend */}
