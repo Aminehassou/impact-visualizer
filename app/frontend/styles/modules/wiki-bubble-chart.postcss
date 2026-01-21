@@ -299,17 +299,14 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  justify-content: center;
 
   &Wrapper {
     position: relative;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
   }
 
   &Input {
-    margin-top: auto;
-    margin-bottom: auto;
+    width: 100%;
   }
 
   &List {
@@ -338,13 +335,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
 
-    &:hover,
-    &.is-active {
-      background-color: #f0f4ff;
-    }
-
-    &.is-active {
-      background-color: #e8edff;
+    &:hover {
+      background-color: #f0f4ff; 
     }
   }
 }
@@ -374,10 +366,9 @@
   &Toggle {
     position: absolute;
     left: 0;
-    top: 12px;
     width: 36px;
     height: 48px;
-    background: linear-gradient(135deg, #676eb4 0%, #5a6099 100%);
+    background: #676eb4;
     border: none;
     border-radius: 6px 0 0 6px;
     cursor: pointer;
@@ -385,27 +376,20 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
-    transition: background 150ms ease;
-    box-shadow: -2px 2px 8px rgba(0, 0, 0, 0.1);
     z-index: 10;
 
     &:hover {
-      background: linear-gradient(135deg, #5a6099 0%, #4d5385 100%);
+      background: #5a6099
     }
 
     &Icon {
-      font-size: 16px;
-      font-weight: 600;
       color: #fff;
-      line-height: 1;
     }
 
     &Count {
       font-size: 11px;
       font-weight: 600;
-      color: rgba(255, 255, 255, 0.9);
-      line-height: 1;
+      color: #fff;
     }
   }
 
@@ -414,7 +398,6 @@
     flex-direction: column;
     width: 280px;
     min-width: 280px;
-    height: 100%;
     max-height: 650px;
     margin-left: 36px;
     opacity: 0;
@@ -433,7 +416,6 @@
     background: #fff;
     display: flex;
     flex-direction: column;
-    gap: 4px;
   }
 
   &Title {
@@ -448,7 +430,6 @@
   }
 
   &List {
-    flex: 1;
     overflow-y: auto;
     margin: 0;
     padding: 0;
