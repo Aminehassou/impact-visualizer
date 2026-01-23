@@ -18,7 +18,7 @@ const FilteredArticlesSidebar: React.FC<FilteredArticlesSidebarProps> = ({
 
   const getWikiUrl = (articleName: string) =>
     `https://${language}.${project}.org/wiki/${encodeURIComponent(
-      articleName.replace(/ /g, "_")
+      articleName.replace(/ /g, "_"),
     )}`;
 
   return (

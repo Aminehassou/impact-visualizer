@@ -129,7 +129,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
       Start: true,
       Stub: true,
       List: true,
-    }
+    },
   );
   const [xAxisKey, setXAxisKey] = useState<XAxisKey>("title");
   const [yAxisKey, setYAxisKey] = useState<YAxisKey>("average_daily_views");
@@ -174,7 +174,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
           article,
           ...analytics,
           assessment_grade_color: getAssessmentColor(
-            analytics?.assessment_grade
+            analytics?.assessment_grade,
           ),
           protection_summary: formatProtectionSummary(protections),
           has_move_restriction: hasMoveRestriction,
@@ -616,7 +616,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
             const language = wiki?.language || "en";
             const project = wiki?.project || "wikipedia";
             const wikiUrl = `https://${language}.${project}.org/wiki/${encodeURIComponent(
-              articleName.replace(/ /g, "_")
+              articleName.replace(/ /g, "_"),
             )}`;
             window.open(wikiUrl, "_blank");
           }
@@ -633,7 +633,6 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
     actions,
     wiki,
     selectedGrades,
-    searchTerm,
     xAxisKey,
     yAxisConfig,
     yAxisMinInput,
@@ -672,6 +671,15 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
     }
   };
 
+  const handleSearchChange = (term: string) => {
+    setSearchTerm(term);
+    if (viewRef.current) {
+      const escapedSearchTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      viewRef.current.view.signal("search_input", escapedSearchTerm);
+      viewRef.current.view.runAsync();
+    }
+  };
+
   return (
     <div className="WikiBubbleChart">
       <div className="WikiBubbleChartTitleRow">
@@ -693,7 +701,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
         <div className="WikiBubbleChartHeaderBox">
           <ArticleSearchAutocomplete
             searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
+            onSearchChange={handleSearchChange}
             articleTitles={articleTitles}
           />
         </div>
