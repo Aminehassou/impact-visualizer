@@ -55,13 +55,13 @@ const ArticleSearchAutocomplete: React.FC<ArticleSearchAutocompleteProps> = ({
       case "ArrowDown":
         e.preventDefault();
         setActiveSuggestion((prev) =>
-          prev >= suggestions.length - 1 ? 0 : prev + 1
+          prev >= suggestions.length - 1 ? 0 : prev + 1,
         );
         break;
       case "ArrowUp":
         e.preventDefault();
         setActiveSuggestion((prev) =>
-          prev <= 0 ? suggestions.length - 1 : prev - 1
+          prev <= 0 ? suggestions.length - 1 : prev - 1,
         );
         break;
       case "Enter":
@@ -89,8 +89,8 @@ const ArticleSearchAutocomplete: React.FC<ArticleSearchAutocompleteProps> = ({
   };
 
   return (
-    <div className="ArticleSearchAutocomplete">
-      <div className="BoxTitle">Search articles</div>
+    <>
+      <div className="BoxTitle">Search</div>
       <div
         className="ArticleSearchAutocompleteWrapper"
         ref={suggestionsRef as RefObject<HTMLDivElement>}
@@ -122,7 +122,7 @@ const ArticleSearchAutocomplete: React.FC<ArticleSearchAutocompleteProps> = ({
           </ul>
         )}
       </div>
-    </div>
+    </>
   );
 };
 
