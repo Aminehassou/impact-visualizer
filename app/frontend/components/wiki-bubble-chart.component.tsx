@@ -211,7 +211,16 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
     return sortedRows.map((row) => row.article);
   }, [sortedRows]);
 
-  const filteredArticles = useMemo(() => {
+  const yAxisAutoDomain = useMemo(() => {
+    const values = rows
+      .map((row) => row[yAxisConfig.currentField])
+      .filter((value) => typeof value === "number" && Number.isFinite(value));
+
+    if (!values.length) return { min: null, max: null };
+    return { min: Math.min(...values), max: Math.max(...values) };
+  }, [rows, yAxisConfig.currentField]);
+
+  const parsedYAxisDomain = useMemo(() => {
     const parsedMin =
       yAxisMinInput.trim() === "" ? null : Number(yAxisMinInput);
     const parsedMax =
@@ -222,40 +231,30 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
       parsedMax !== null && Number.isFinite(parsedMax) ? parsedMax : null;
 
     if (domainMin !== null && domainMax !== null && domainMin > domainMax) {
-      const tmp = domainMin;
-      domainMin = domainMax;
-      domainMax = tmp;
+      [domainMin, domainMax] = [domainMax, domainMin];
     }
+    return { domainMin, domainMax };
+  }, [yAxisMinInput, yAxisMaxInput]);
+
+  const filteredArticles = useMemo(() => {
+    const { domainMin, domainMax } = parsedYAxisDomain;
+    const lowerSearch = searchTerm.trim().toLowerCase();
 
     return sortedRows.filter((row) => {
-      if (searchTerm.trim()) {
-        const lowerSearch = searchTerm.toLowerCase();
-        if (!row.article.toLowerCase().includes(lowerSearch)) {
-          return false;
-        }
+      if (lowerSearch && !row.article.toLowerCase().includes(lowerSearch)) {
+        return false;
       }
 
       const grade = row.assessment_grade;
-      if (grade) {
-        if (!selectedGrades[grade]) {
-          return false;
-        }
+      if (grade && !selectedGrades[grade]) {
+        return false;
       }
 
-      if (filterMoveRestriction || filterEditRestriction) {
-        if (filterMoveRestriction && filterEditRestriction) {
-          if (!row.has_move_restriction || !row.has_edit_restriction) {
-            return false;
-          }
-        } else if (filterMoveRestriction) {
-          if (!row.has_move_restriction) {
-            return false;
-          }
-        } else if (filterEditRestriction) {
-          if (!row.has_edit_restriction) {
-            return false;
-          }
-        }
+      if (filterMoveRestriction && !row.has_move_restriction) {
+        return false;
+      }
+      if (filterEditRestriction && !row.has_edit_restriction) {
+        return false;
       }
 
       const yValue = row[yAxisConfig.currentField];
@@ -274,19 +273,9 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
     selectedGrades,
     filterMoveRestriction,
     filterEditRestriction,
-    yAxisMinInput,
-    yAxisMaxInput,
+    parsedYAxisDomain,
     yAxisConfig.currentField,
   ]);
-
-  const yAxisAutoDomain = useMemo(() => {
-    const values = rows
-      .map((row) => row[yAxisConfig.currentField])
-      .filter((value) => typeof value === "number" && Number.isFinite(value));
-
-    if (!values.length) return { min: null, max: null };
-    return { min: Math.min(...values), max: Math.max(...values) };
-  }, [rows, yAxisConfig.currentField]);
 
   useEffect(() => {
     setYAxisMinInput("");
@@ -296,20 +285,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
   useEffect(() => {
     if (!containerRef.current || sortedRows.length === 0) return;
 
-    const parsedMin =
-      yAxisMinInput.trim() === "" ? null : Number(yAxisMinInput);
-    const parsedMax =
-      yAxisMaxInput.trim() === "" ? null : Number(yAxisMaxInput);
-    let domainMin =
-      parsedMin !== null && Number.isFinite(parsedMin) ? parsedMin : null;
-    let domainMax =
-      parsedMax !== null && Number.isFinite(parsedMax) ? parsedMax : null;
-
-    if (domainMin !== null && domainMax !== null && domainMin > domainMax) {
-      const tmp = domainMin;
-      domainMin = domainMax;
-      domainMax = tmp;
-    }
+    const { domainMin, domainMax } = parsedYAxisDomain;
 
     // calculate padding based on maximum circle radius to prevent clipping
     const maxCircleRadius = Math.sqrt(1500 / Math.PI); // this is how vega calculates the circle radius
@@ -341,6 +317,21 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
     };
 
     const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    const visibilityTestExpr = [
+      "(!highlight.article)",
+      "(!search_input || test(regexp(search_input,'i'), datum.article))",
+      "((grade_FA && datum.assessment_grade == 'FA') || (grade_FL && datum.assessment_grade == 'FL') || (grade_GA && datum.assessment_grade == 'GA') || (grade_A && datum.assessment_grade == 'A') || (grade_B && datum.assessment_grade == 'B') || (grade_C && datum.assessment_grade == 'C') || (grade_Start && datum.assessment_grade == 'Start') || (grade_Stub && datum.assessment_grade == 'Stub') || (grade_List && datum.assessment_grade == 'List') || !datum.assessment_grade)",
+      "((!filter_move_restriction && !filter_edit_restriction) || (filter_move_restriction && !filter_edit_restriction && datum.has_move_restriction) || (!filter_move_restriction && filter_edit_restriction && datum.has_edit_restriction) || (filter_move_restriction && filter_edit_restriction && datum.has_move_restriction && datum.has_edit_restriction))",
+    ].join(" && ");
+
+    const makeOpacityEncoding = (activeOpacity: number) => ({
+      condition: [
+        { param: "highlight", empty: false, value: activeOpacity },
+        { test: visibilityTestExpr, value: activeOpacity },
+      ],
+      value: 0.06,
+    });
 
     const spec: VisualizationSpec = {
       $schema: "https://vega.github.io/schema/vega-lite/v5.json",
@@ -446,16 +437,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
               type: "quantitative",
               scale: { type: "sqrt", range: [50, 1500] },
             },
-            opacity: {
-              condition: [
-                { param: "highlight", empty: false, value: 1 },
-                {
-                  test: "(!highlight.article) && (!search_input || test(regexp(search_input,'i'), datum.article)) && ((grade_FA && datum.assessment_grade == 'FA') || (grade_FL && datum.assessment_grade == 'FL') || (grade_GA && datum.assessment_grade == 'GA') || (grade_A && datum.assessment_grade == 'A') || (grade_B && datum.assessment_grade == 'B') || (grade_C && datum.assessment_grade == 'C') || (grade_Start && datum.assessment_grade == 'Start') || (grade_Stub && datum.assessment_grade == 'Stub') || (grade_List && datum.assessment_grade == 'List') || !datum.assessment_grade) && ((!filter_move_restriction && !filter_edit_restriction) || (filter_move_restriction && !filter_edit_restriction && datum.has_move_restriction) || (!filter_move_restriction && filter_edit_restriction && datum.has_edit_restriction) || (filter_move_restriction && filter_edit_restriction && datum.has_move_restriction && datum.has_edit_restriction))",
-                  value: 1,
-                },
-              ],
-              value: 0.06,
-            },
+            opacity: makeOpacityEncoding(1),
           },
         },
         // Previous article size circle (prev_article_size)
@@ -475,16 +457,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
               type: "quantitative",
               scale: { type: "sqrt", range: [20, 600] },
             },
-            opacity: {
-              condition: [
-                { param: "highlight", empty: false, value: 1 },
-                {
-                  test: "(!highlight.article) && (!search_input || test(regexp(search_input,'i'), datum.article)) && ((grade_FA && datum.assessment_grade == 'FA') || (grade_FL && datum.assessment_grade == 'FL') || (grade_GA && datum.assessment_grade == 'GA') || (grade_A && datum.assessment_grade == 'A') || (grade_B && datum.assessment_grade == 'B') || (grade_C && datum.assessment_grade == 'C') || (grade_Start && datum.assessment_grade == 'Start') || (grade_Stub && datum.assessment_grade == 'Stub') || (grade_List && datum.assessment_grade == 'List') || !datum.assessment_grade) && ((!filter_move_restriction && !filter_edit_restriction) || (filter_move_restriction && !filter_edit_restriction && datum.has_move_restriction) || (!filter_move_restriction && filter_edit_restriction && datum.has_edit_restriction) || (filter_move_restriction && filter_edit_restriction && datum.has_move_restriction && datum.has_edit_restriction))",
-                  value: 1,
-                },
-              ],
-              value: 0.06,
-            },
+            opacity: makeOpacityEncoding(1),
           },
         },
         // Lead section size circle (lead_section_size)
@@ -502,16 +475,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
               type: "quantitative",
               scale: { type: "sqrt", range: [30, 800] },
             },
-            opacity: {
-              condition: [
-                { param: "highlight", empty: false, value: 0.8 },
-                {
-                  test: "(!highlight.article) && (!search_input || test(regexp(search_input,'i'), datum.article)) && ((grade_FA && datum.assessment_grade == 'FA') || (grade_FL && datum.assessment_grade == 'FL') || (grade_GA && datum.assessment_grade == 'GA') || (grade_A && datum.assessment_grade == 'A') || (grade_B && datum.assessment_grade == 'B') || (grade_C && datum.assessment_grade == 'C') || (grade_Start && datum.assessment_grade == 'Start') || (grade_Stub && datum.assessment_grade == 'Stub') || (grade_List && datum.assessment_grade == 'List') || !datum.assessment_grade) && ((!filter_move_restriction && !filter_edit_restriction) || (filter_move_restriction && !filter_edit_restriction && datum.has_move_restriction) || (!filter_move_restriction && filter_edit_restriction && datum.has_edit_restriction) || (filter_move_restriction && filter_edit_restriction && datum.has_move_restriction && datum.has_edit_restriction))",
-                  value: 0.8,
-                },
-              ],
-              value: 0.06,
-            },
+            opacity: makeOpacityEncoding(0.8),
           },
         },
         // Article size circle (article_size)
@@ -563,16 +527,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
               type: "quantitative",
               scale: { type: "sqrt", range: [20, 600] },
             },
-            opacity: {
-              condition: [
-                { param: "highlight", empty: false, value: 0.5 },
-                {
-                  test: "(!highlight.article) && (!search_input || test(regexp(search_input,'i'), datum.article)) && ((grade_FA && datum.assessment_grade == 'FA') || (grade_FL && datum.assessment_grade == 'FL') || (grade_GA && datum.assessment_grade == 'GA') || (grade_A && datum.assessment_grade == 'A') || (grade_B && datum.assessment_grade == 'B') || (grade_C && datum.assessment_grade == 'C') || (grade_Start && datum.assessment_grade == 'Start') || (grade_Stub && datum.assessment_grade == 'Stub') || (grade_List && datum.assessment_grade == 'List') || !datum.assessment_grade) && ((!filter_move_restriction && !filter_edit_restriction) || (filter_move_restriction && !filter_edit_restriction && datum.has_move_restriction) || (!filter_move_restriction && filter_edit_restriction && datum.has_edit_restriction) || (filter_move_restriction && filter_edit_restriction && datum.has_move_restriction && datum.has_edit_restriction))",
-                  value: 0.5,
-                },
-              ],
-              value: 0.06,
-            },
+            opacity: makeOpacityEncoding(0.5),
           },
         },
       ],
@@ -632,13 +587,10 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
     sortedRows,
     actions,
     wiki,
-    selectedGrades,
     xAxisKey,
     yAxisConfig,
-    yAxisMinInput,
-    yAxisMaxInput,
-    filterMoveRestriction,
-    filterEditRestriction,
+    parsedYAxisDomain,
+    yAxisAutoDomain.max,
   ]);
 
   const toggleGrades = (grades: string[], on: boolean) => {
