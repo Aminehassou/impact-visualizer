@@ -1,4 +1,5 @@
 import React from "react";
+import { GoTriangleLeft, GoTriangleRight } from "react-icons/go";
 
 interface FilteredArticlesSidebarProps {
   articles: { article: string }[];
@@ -30,7 +31,7 @@ const FilteredArticlesSidebar: React.FC<FilteredArticlesSidebarProps> = ({
         aria-label={isOpen ? "Close sidebar" : "Open sidebar"}
       >
         <span className="FilteredArticlesSidebarToggleIcon">
-          {isOpen ? ">" : "<"}
+          {isOpen ? <GoTriangleRight /> : <GoTriangleLeft />}
         </span>
         <span className="FilteredArticlesSidebarToggleCount">
           {articles.length}

@@ -360,14 +360,14 @@
   &.is-open {
     width: 316px;
     min-width: 316px;
-    border-left: 1px solid #e0e0e0;
+    border: 1px solid #e0e0e0;
   }
 
   &Toggle {
     position: absolute;
     left: 0;
     width: 36px;
-    height: 48px;
+    height: 72px;
     background: #676eb4;
     border: none;
     border-radius: 6px 0 0 6px;
@@ -377,6 +377,9 @@
     align-items: center;
     justify-content: center;
     z-index: 10;
+    transition:
+      left 250ms cubic-bezier(0.4, 0, 0.2, 1),
+      border-radius 250ms cubic-bezier(0.4, 0, 0.2, 1);
 
     &:hover {
       background: #5a6099;
@@ -393,6 +396,11 @@
     }
   }
 
+  &.is-open &Toggle {
+    left: 0;
+    border-radius: 0;
+  }
+
   &Content {
     display: flex;
     flex-direction: column;
@@ -404,20 +412,26 @@
     visibility: hidden;
     transition:
       opacity 200ms ease,
-      visibility 200ms ease;
+      visibility 200ms ease,
+      margin-left 250ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   &.is-open &Content {
     opacity: 1;
     visibility: visible;
+    margin-left: 0;
+    width: 316px;
+    min-width: 316px;
   }
 
   &Header {
     padding: 16px;
+    padding-left: 52px;
     border-bottom: 1px solid #e0e0e0;
     background: #fff;
     display: flex;
     flex-direction: column;
+    position: relative;
   }
 
   &Title {
