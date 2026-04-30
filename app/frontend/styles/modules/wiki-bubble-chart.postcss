@@ -471,6 +471,48 @@
   }
 }
 
+.CentralityFilter {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+
+  > .BoxTitle {
+    margin-bottom: 6px;
+  }
+
+  &Body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-self: center;
+  }
+
+  &SliderRow {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &SliderLabel {
+    font-size: 14px;
+    font-weight: 400;
+  }
+
+  &Slider {
+    width: 100%;
+    cursor: pointer;
+    accent-color: #555;
+  }
+
+  &SliderTicks {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #888;
+    padding: 0 2px;
+  }
+}
+
 .ArticleSearchAutocomplete {
   &Wrapper {
     position: relative;

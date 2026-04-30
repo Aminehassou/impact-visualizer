@@ -136,14 +136,22 @@ class Topic < ApplicationRecord
   end
 
   def article_analytics_data
+    active_bag = active_article_bag
+    centrality_join = if active_bag
+                        "LEFT JOIN article_bag_articles aba ON aba.article_id = topic_article_analytics.article_id AND aba.article_bag_id = #{active_bag.id}"
+                      else
+                        'LEFT JOIN article_bag_articles aba ON FALSE'
+                      end
+
     topic_article_analytics
       .joins(:article)
-      .pluck('articles.title', :average_daily_views, :prev_average_daily_views, :article_size, :prev_article_size, :talk_size, :prev_talk_size, :lead_section_size, :assessment_grade, :publication_date, :linguistic_versions_count, :warning_tags_count, :images_count, :number_of_editors, :article_protections, :incoming_links_count)
-      .map do |title, average_daily_views, prev_average_daily_views, article_size, prev_article_size, talk_size, prev_talk_size, lead_section_size, assessment_grade, publication_date, linguistic_versions_count, warning_tags_count, images_count, number_of_editors, article_protections, incoming_links_count|
+      .joins(centrality_join)
+      .pluck('articles.title', :average_daily_views, :prev_average_daily_views, :article_size, :prev_article_size, :talk_size, :prev_talk_size, :lead_section_size, :assessment_grade, :publication_date, :linguistic_versions_count, :warning_tags_count, :images_count, :number_of_editors, :article_protections, :incoming_links_count, Arel.sql('COALESCE(aba.centrality, 0)'))
+      .map do |title, average_daily_views, prev_average_daily_views, article_size, prev_article_size, talk_size, prev_talk_size, lead_section_size, assessment_grade, publication_date, linguistic_versions_count, warning_tags_count, images_count, number_of_editors, article_protections, incoming_links_count, centrality|
         [title,
          { average_daily_views:, prev_average_daily_views:, article_size:, prev_article_size:, talk_size:, prev_talk_size:,
           lead_section_size:, assessment_grade:, publication_date:, linguistic_versions_count:, warning_tags_count:,
-          images_count:, number_of_editors:, article_protections:, incoming_links_count: }]
+          images_count:, number_of_editors:, article_protections:, incoming_links_count:, centrality: }]
       end
       .to_h
   end

@@ -66,6 +66,9 @@ class ImportService
 
   def import_article(article_title:, article_bag:)
     csv_title = article_title[0]
+    raw_centrality = article_title[1]&.strip
+    centrality = raw_centrality&.match?(/\A([1-9]|10)\z/) ? raw_centrality.to_i : 0
+
     page_info = @wiki_action_api.get_page_info(title: URI::DEFAULT_PARSER.unescape(csv_title))
     return unless page_info
     title = page_info['title']
@@ -83,7 +86,8 @@ class ImportService
 
     article = Article.find_or_create_by(title:, wiki: @wiki)
     article.update_details
-    ArticleBagArticle.find_or_create_by(article:, article_bag:)
+    article_bag_article = ArticleBagArticle.find_or_create_by(article:, article_bag:)
+    article_bag_article.update(centrality:)
   end
 
   def import_users(total: nil, at: nil)

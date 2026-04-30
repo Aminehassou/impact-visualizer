@@ -20,6 +20,7 @@ type ArticleAnalytics = {
   assessment_grade: string | null;
   publication_date: string | null;
   article_protections: ArticleProtection[];
+  centrality: number;
 };
 
 type NumericSortField =
@@ -31,7 +32,10 @@ type NumericSortField =
   | "images_count";
 
 type XAxisKey = "title" | "publication_date" | NumericSortField;
-type YAxisKey = "average_daily_views" | "number_of_editors" | "incoming_links_count";
+type YAxisKey =
+  | "average_daily_views"
+  | "number_of_editors"
+  | "incoming_links_count";
 
 type NumericSortableArticle = { article: string } & Record<
   NumericSortField,

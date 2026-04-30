@@ -130,6 +130,55 @@ function ProtectionFilterCheckboxes({
   );
 }
 
+function CentralityFilterControls({
+  centralityMin,
+  excludeUnassessed,
+  onCentralityMinChange,
+  onExcludeUnassessedChange,
+}: {
+  centralityMin: number;
+  excludeUnassessed: boolean;
+  onCentralityMinChange: (value: number) => void;
+  onExcludeUnassessedChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="CentralityFilter">
+      <div className="BoxTitle">Centrality filter</div>
+      <div className="CentralityFilterBody">
+        <label className="ProtectionFilterLabel">
+          <input
+            type="checkbox"
+            checked={excludeUnassessed}
+            onChange={(e) => onExcludeUnassessedChange(e.target.checked)}
+          />
+          <span>Exclude unassessed articles</span>
+        </label>
+        <div className="CentralitySliderRow">
+          <label
+            htmlFor="centrality-min-slider"
+            className="CentralitySliderLabel"
+          >
+            Min centrality: <strong>{centralityMin}</strong>
+          </label>
+          <input
+            id="centrality-min-slider"
+            type="range"
+            min={1}
+            max={10}
+            value={centralityMin}
+            onChange={(e) => onCentralityMinChange(Number(e.target.value))}
+            className="CentralitySlider"
+          />
+          <div className="CentralitySliderTicks">
+            <span>1</span>
+            <span>10</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
   data = {},
   actions = false,
@@ -165,6 +214,9 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
   const [filterMoveRestriction, setFilterMoveRestriction] =
     useState<boolean>(false);
   const [filterEditRestriction, setFilterEditRestriction] =
+    useState<boolean>(false);
+  const [centralityMin, setCentralityMin] = useState<number>(1);
+  const [excludeUnassessedCentrality, setExcludeUnassessedCentrality] =
     useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
@@ -252,6 +304,11 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
 
     return next;
   }, [rows, xAxisKey]);
+
+  const hasAssessedCentrality = useMemo(
+    () => rows.some((r) => r.centrality > 0),
+    [rows],
+  );
 
   const [langLinksProgress, setLangLinksProgress] = useState<LangLinksProgress>(
     { done: 0, total: 0 },
@@ -358,6 +415,13 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
         return false;
       }
 
+      if (excludeUnassessedCentrality && row.centrality === 0) {
+        return false;
+      }
+      if (row.centrality > 0 && row.centrality < centralityMin) {
+        return false;
+      }
+
       const yValue = row[yAxisConfig.currentField];
       if (domainMin !== null && yValue < domainMin) {
         return false;
@@ -374,6 +438,8 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
     selectedGrades,
     filterMoveRestriction,
     filterEditRestriction,
+    excludeUnassessedCentrality,
+    centralityMin,
     parsedYAxisDomain,
     yAxisConfig.currentField,
   ]);
@@ -484,6 +550,8 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
       "(!search_input || indexof(lower(datum.article), search_input) >= 0)",
       "((grade_FA && datum.assessment_grade == 'FA') || (grade_FL && datum.assessment_grade == 'FL') || (grade_GA && datum.assessment_grade == 'GA') || (grade_A && datum.assessment_grade == 'A') || (grade_B && datum.assessment_grade == 'B') || (grade_C && datum.assessment_grade == 'C') || (grade_Start && datum.assessment_grade == 'Start') || (grade_Stub && datum.assessment_grade == 'Stub') || (grade_List && datum.assessment_grade == 'List') || (grade_Unassessed && !datum.assessment_grade))",
       "((!filter_move_restriction || datum.has_move_restriction) && (!filter_edit_restriction || datum.has_edit_restriction))",
+      "(!exclude_unassessed_centrality || datum.centrality > 0)",
+      "(datum.centrality == 0 || datum.centrality >= centrality_min)",
     ].join(" && ");
 
     const isLargeDataset = sortedRows.length > LARGE_DATASET_THRESHOLD;
@@ -536,6 +604,11 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
         { name: "grade_Unassessed", value: selectedGrades.Unassessed },
         { name: "filter_move_restriction", value: filterMoveRestriction },
         { name: "filter_edit_restriction", value: filterEditRestriction },
+        {
+          name: "exclude_unassessed_centrality",
+          value: excludeUnassessedCentrality,
+        },
+        { name: "centrality_min", value: centralityMin },
         { name: "show_labels", value: showLabels },
       ],
 
@@ -845,6 +918,22 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
     }
   };
 
+  const handleCentralityMinChange = (value: number) => {
+    setCentralityMin(value);
+    if (viewRef.current) {
+      viewRef.current.view.signal("centrality_min", value);
+      viewRef.current.view.runAsync();
+    }
+  };
+
+  const handleExcludeUnassessedCentralityChange = (checked: boolean) => {
+    setExcludeUnassessedCentrality(checked);
+    if (viewRef.current) {
+      viewRef.current.view.signal("exclude_unassessed_centrality", checked);
+      viewRef.current.view.runAsync();
+    }
+  };
+
   const handleShowLabelsChange = (checked: boolean) => {
     setShowLabels(checked);
     if (viewRef.current) {
@@ -1092,6 +1181,19 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
                 onEditChange={handleEditRestrictionChange}
               />
             </div>
+
+            {hasAssessedCentrality && (
+              <div className="WikiBubbleChartFilterBox">
+                <CentralityFilterControls
+                  centralityMin={centralityMin}
+                  excludeUnassessed={excludeUnassessedCentrality}
+                  onCentralityMinChange={handleCentralityMinChange}
+                  onExcludeUnassessedChange={
+                    handleExcludeUnassessedCentralityChange
+                  }
+                />
+              </div>
+            )}
           </div>
 
           <div className="WikiBubbleChartStats">
@@ -1173,6 +1275,18 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
                 onEditChange={handleEditRestrictionChange}
               />
             </div>
+            {hasAssessedCentrality && (
+              <div className="WikiBubbleChartFilterBox">
+                <CentralityFilterControls
+                  centralityMin={centralityMin}
+                  excludeUnassessed={excludeUnassessedCentrality}
+                  onCentralityMinChange={handleCentralityMinChange}
+                  onExcludeUnassessedChange={
+                    handleExcludeUnassessedCentralityChange
+                  }
+                />
+              </div>
+            )}
           </div>
 
           <ArticleLanguagesGrid

@@ -7,7 +7,7 @@ class ArticleBagArticle < ApplicationRecord
 
   # For ActiveAdmin
   def self.ransackable_attributes(auth_object = nil)
-    ["article_bag_id", "article_id", "created_at", "id", "updated_at"]
+    ["article_bag_id", "article_id", "centrality", "created_at", "id", "updated_at"]
   end
 
 end
@@ -17,6 +17,7 @@ end
 # Table name: article_bag_articles
 #
 #  id             :bigint           not null, primary key
+#  centrality     :integer          default(0), not null
 #  created_at     :datetime         not null
 #  updated_at     :datetime         not null
 #  article_bag_id :bigint           not null

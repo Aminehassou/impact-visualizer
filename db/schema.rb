@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2026_03_02_000000) do
+ActiveRecord::Schema[7.0].define(version: 2026_04_30_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -73,8 +73,10 @@ ActiveRecord::Schema[7.0].define(version: 2026_03_02_000000) do
     t.bigint "article_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "centrality", default: 0, null: false
     t.index ["article_bag_id"], name: "index_article_bag_articles_on_article_bag_id"
     t.index ["article_id"], name: "index_article_bag_articles_on_article_id"
+    t.check_constraint "centrality >= 0 AND centrality <= 10", name: "centrality_range"
   end
 
   create_table "article_bags", force: :cascade do |t|
