@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+
 class WikiActionApi
   include ApiErrorHandling
 
@@ -493,13 +494,13 @@ class WikiActionApi
 
   def api_client
     client = MediawikiApi::Client.new @api_url
-    client.connection.headers[:user_agent] = Features.user_agent if client.respond_to?(:connection)
+    client.connection.headers['User-Agent'] = Features.user_agent if client.respond_to?(:connection) && Features.user_agent.present?
     client
   end
 
   def wikidata_api_client
     client = MediawikiApi::Client.new 'https://www.wikidata.org/w/api.php'
-    client.connection.headers[:user_agent] = Features.user_agent if client.respond_to?(:connection)
+    client.connection.headers['User-Agent'] = Features.user_agent if client.respond_to?(:connection) && Features.user_agent.present?
     client
   end
 
@@ -507,10 +508,14 @@ class WikiActionApi
     total_tries = 3
     tries ||= 0
     if wikidata
-      @wikidata_client.action :wbgetentities, query
+      puts "[WikiActionApi] >> wbgetentities #{@wikidata_client.instance_variable_get(:@url)} query=#{query.inspect}" if Rails.env.development?
+      response = @wikidata_client.action :wbgetentities, query
     else
-      @client.send(action, query)
+      puts "[WikiActionApi] >> #{action} #{@api_url} query=#{query.inspect}" if Rails.env.development?
+      response = @client.send(action, query)
     end
+    puts "[WikiActionApi] << #{response&.status} data=#{response&.data&.inspect}" if Rails.env.development?
+    response
   rescue StandardError => e
     tries += 1
     unless Rails.env.test?
@@ -519,9 +524,9 @@ class WikiActionApi
                         e.response[:headers]['retry-after'] || e.response[:headers]['Retry-After']
                       end
         wait_seconds = retry_after.to_i if retry_after
-        wait_seconds = [wait_seconds || 0, 1].max
-        wait_seconds = [wait_seconds, 60].min
-        wait_seconds += rand(0.0..0.5)
+        wait_seconds = [wait_seconds || 0, 30].max
+        wait_seconds = [wait_seconds, 120].min
+        wait_seconds += rand(0.0..5.0)
         puts "WikiActionApi / 429 Too Many Requests - waiting #{wait_seconds.round(2)}s (attempt #{tries}/#{total_tries})"
         sleep wait_seconds
       else

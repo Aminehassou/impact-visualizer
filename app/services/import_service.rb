@@ -10,20 +10,15 @@ class ImportService
   end
 
   def normalize_csv_content(content)
-    lines = content.split("\n")
-    normalized_lines = lines.map do |line|
+    content.split("\n").filter_map do |line|
       line = line.strip
       next if line.empty?
 
-      unquoted = if line.start_with?('"') && line.end_with?('"')
-                   line[1..-2].gsub('""', '"')
-                 else
-                   line
-                 end
-
-      "\"#{unquoted.gsub('"', '""')}\""
-    end
-    normalized_lines.compact.join("\n")
+      row = CSV.parse_line(line)
+      CSV.generate_line(row, row_sep: '').strip
+    rescue CSV::MalformedCSVError
+      line
+    end.join("\n")
   end
 
   def reset_topic
@@ -69,7 +64,8 @@ class ImportService
     raw_centrality = article_title[1]&.strip
     centrality = raw_centrality&.match?(/\A([1-9]|10)\z/) ? raw_centrality.to_i : 0
 
-    page_info = @wiki_action_api.get_page_info(title: URI::DEFAULT_PARSER.unescape(csv_title))
+    unescaped_title = URI::DEFAULT_PARSER.unescape(csv_title)
+    page_info = @wiki_action_api.get_page_info(title: unescaped_title)
     return unless page_info
     title = page_info['title']
 
