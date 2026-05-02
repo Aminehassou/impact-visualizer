@@ -50,17 +50,51 @@ class WikimediaPageviewsApi
 
   private
 
+  # Transient network errors that should be retried with backoff.
+  # Faraday::ConnectionFailed wraps Net::OpenTimeout, ECONNRESET, etc.
+  # Faraday::TimeoutError wraps Net::ReadTimeout. SSL handshake
+  # failures show up as Faraday::SSLError. Any of these indicates a
+  # temporary network blip rather than a real "no data" answer, so
+  # the caller would draw the wrong conclusion (returning 0 views) if
+  # we let them propagate or didn't retry.
+  TRANSIENT_NETWORK_ERRORS = [
+    Faraday::ConnectionFailed,
+    Faraday::TimeoutError,
+    Faraday::SSLError
+  ].freeze
+
   # The pageviews endpoint isn't behind Faraday's `:raise_error`
   # middleware, so a 429 comes back as a regular response with
   # status 429. Without this loop the caller silently treats 429
   # like "no data" and returns 0 — masking the throttle and
   # producing wrong analytics. Honor Retry-After (clamped to a
   # 5–60 s window) and retry up to MAX_TRIES times.
+  #
+  # Also catches transient network errors and retries with
+  # exponential backoff — without this, a single timeout against the
+  # pageviews cluster would propagate up through the analytics job
+  # and Sidekiq would auto-retry the entire 6562-article batch from
+  # scratch (a 10-minute regression per blip). After MAX_TRIES,
+  # return nil so the caller can write nil for that one article and
+  # continue.
   def pageviews_get(url)
     tries = 0
     loop do
       tries += 1
-      response = @client.get(url)
+      response = begin
+        @client.get(url)
+      rescue *TRANSIENT_NETWORK_ERRORS => e
+        return nil if tries >= MAX_TRIES
+        backoff = (2**tries) + rand(0.0..3.0)
+        unless Rails.env.test?
+          Rails.logger.warn(
+            "WikimediaPageviewsApi / network error (#{e.class}: #{e.message}) - " \
+            "retrying after #{backoff.round(2)}s (attempt #{tries}/#{MAX_TRIES})"
+          )
+        end
+        sleep backoff
+        next
+      end
       return response unless response&.status == 429
       return response if tries >= MAX_TRIES
 
