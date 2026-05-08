@@ -8,7 +8,7 @@ RSpec.describe GenerateArticleAnalyticsJob, type: :job do
   describe '#perform — auto-chain to incremental_topic_build' do
     context 'for a Topic Builder topic' do
       let(:topic) do
-        create(:topic, wiki: wiki, tb_handle: 'tbp_abc123',
+        create(:topic, wiki:, tb_handle: 'tbp_abc123',
                        start_date: Date.new(2024, 1, 1), end_date: Date.new(2024, 12, 31))
       end
 
@@ -21,7 +21,7 @@ RSpec.describe GenerateArticleAnalyticsJob, type: :job do
 
     context 'for a CSV-driven topic (no tb_handle)' do
       let(:topic) do
-        create(:topic, wiki: wiki, tb_handle: nil,
+        create(:topic, wiki:, tb_handle: nil,
                        start_date: Date.new(2024, 1, 1), end_date: Date.new(2024, 12, 31))
       end
 
@@ -34,7 +34,7 @@ RSpec.describe GenerateArticleAnalyticsJob, type: :job do
 
     context 'for a TB topic that already has a build in flight' do
       let(:topic) do
-        create(:topic, wiki: wiki, tb_handle: 'tbp_abc123',
+        create(:topic, wiki:, tb_handle: 'tbp_abc123',
                        incremental_topic_build_job_id: 'in-flight',
                        start_date: Date.new(2024, 1, 1), end_date: Date.new(2024, 12, 31))
       end
@@ -49,12 +49,12 @@ RSpec.describe GenerateArticleAnalyticsJob, type: :job do
 
   describe '#perform — recency-cache skip' do
     let(:topic) do
-      create(:topic, wiki: wiki, tb_handle: 'tbp_abc123',
+      create(:topic, wiki:, tb_handle: 'tbp_abc123',
                      start_date: Date.new(2024, 1, 1), end_date: Date.new(2024, 12, 31))
     end
     let(:bag) { topic.active_article_bag }
-    let(:fresh_article) { Article.create!(title: 'Fresh', wiki: wiki, pageid: 1) }
-    let(:stale_article) { Article.create!(title: 'Stale', wiki: wiki, pageid: 2) }
+    let(:fresh_article) { Article.create!(title: 'Fresh', wiki:, pageid: 1) }
+    let(:stale_article) { Article.create!(title: 'Stale', wiki:, pageid: 2) }
 
     before do
       ArticleBagArticle.create!(article_bag: bag, article: fresh_article)
@@ -62,11 +62,13 @@ RSpec.describe GenerateArticleAnalyticsJob, type: :job do
     end
 
     it 'skips articles whose TopicArticleAnalytic was updated within RECENCY_WINDOW' do
-      TopicArticleAnalytic.create!(topic: topic, article: fresh_article, average_daily_views: 100)
+      TopicArticleAnalytic.create!(topic:, article: fresh_article, average_daily_views: 100)
       stale = TopicArticleAnalytic.create!(
-        topic: topic, article: stale_article, average_daily_views: 50
+        topic:, article: stale_article, average_daily_views: 50
       )
+      # rubocop:disable Rails/SkipsModelValidations -- backdating updated_at is the whole point
       stale.update_columns(updated_at: described_class::RECENCY_WINDOW.ago - 1.minute)
+      # rubocop:enable Rails/SkipsModelValidations
 
       stats_service = instance_double(ArticleStatsService)
       allow(ArticleStatsService).to receive(:new).and_return(stats_service)
@@ -92,8 +94,8 @@ RSpec.describe GenerateArticleAnalyticsJob, type: :job do
     end
 
     it 'processes everything when force=true even if recently updated' do
-      TopicArticleAnalytic.create!(topic: topic, article: fresh_article, average_daily_views: 100)
-      TopicArticleAnalytic.create!(topic: topic, article: stale_article, average_daily_views: 50)
+      TopicArticleAnalytic.create!(topic:, article: fresh_article, average_daily_views: 100)
+      TopicArticleAnalytic.create!(topic:, article: stale_article, average_daily_views: 50)
 
       stats_service = instance_double(ArticleStatsService)
       allow(ArticleStatsService).to receive(:new).and_return(stats_service)

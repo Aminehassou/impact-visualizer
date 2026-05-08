@@ -11,7 +11,9 @@ class SyncTopicBuilderArticlesJob
 
   sidekiq_retries_exhausted do |msg, _ex|
     topic_id = msg['args'].first
+    # rubocop:disable Rails/SkipsModelValidations -- bulk update bypasses callbacks intentionally
     Topic.where(id: topic_id).update_all(article_import_job_id: nil)
+    # rubocop:enable Rails/SkipsModelValidations
   end
 
   EXPIRATION_SECONDS = 60 * 60 * 24 * 30
@@ -24,12 +26,12 @@ class SyncTopicBuilderArticlesJob
     package = TopicBuilderPackageService.fetch(handle)
     TopicBuilderPackageService.assert_supported_schema!(package)
 
-    diff = TopicBuilderSyncService.compute_diff(topic: topic, package: package)
+    diff = TopicBuilderSyncService.compute_diff(topic:, package:)
     diff_count = diff.adds.size + diff.removes.size + diff.centrality_changes.size
     total(diff_count)
     at(0, 'Applying Topic Builder sync')
 
-    TopicBuilderSyncService.new(topic: topic, package: package).sync!
+    TopicBuilderSyncService.new(topic:, package:).sync!
 
     at(diff_count, 'Sync applied')
 

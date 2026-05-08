@@ -5,13 +5,13 @@ require 'rails_helper'
 describe TopicBuilderSyncService do
   let!(:wiki) { Wiki.find_or_create_by!(language: 'en', project: 'wikipedia') }
   let(:topic) do
-    create(:topic, wiki: wiki, tb_handle: 'tbp_old', tb_source_topic_id: 42).tap do |t|
+    create(:topic, wiki:, tb_handle: 'tbp_old', tb_source_topic_id: 42).tap do |t|
       t.update!(start_date: Date.new(2026, 1, 1), end_date: Date.new(2026, 6, 1))
     end
   end
   let(:bag) { topic.active_article_bag }
-  let(:article_a) { Article.create!(title: 'Achievement gap', wiki: wiki, pageid: 1) }
-  let(:article_b) { Article.create!(title: 'Active learning', wiki: wiki, pageid: 2) }
+  let(:article_a) { Article.create!(title: 'Achievement gap', wiki:, pageid: 1) }
+  let(:article_b) { Article.create!(title: 'Active learning', wiki:, pageid: 2) }
 
   before do
     create(:article_bag_article, article_bag: bag, article: article_a, centrality: 8)
@@ -34,7 +34,7 @@ describe TopicBuilderSyncService do
         { 'title' => 'Achievement gap', 'centrality' => 8 },
         { 'title' => 'Active learning', 'centrality' => nil }
       ])
-      diff = described_class.compute_diff(topic: topic, package: package)
+      diff = described_class.compute_diff(topic:, package:)
       expect(diff).to be_empty
     end
 
@@ -44,8 +44,8 @@ describe TopicBuilderSyncService do
         { 'title' => 'Active learning', 'centrality' => nil },
         { 'title' => 'Bloom\'s taxonomy', 'centrality' => 5 }
       ])
-      diff = described_class.compute_diff(topic: topic, package: package)
-      expect(diff.adds.map { |e| e['title'] }).to eq(['Bloom\'s taxonomy'])
+      diff = described_class.compute_diff(topic:, package:)
+      expect(diff.adds.pluck('title')).to eq(['Bloom\'s taxonomy'])
       expect(diff.removes).to be_empty
       expect(diff.centrality_changes).to be_empty
     end
@@ -54,7 +54,7 @@ describe TopicBuilderSyncService do
       package = package_with([
         { 'title' => 'Achievement gap', 'centrality' => 8 }
       ])
-      diff = described_class.compute_diff(topic: topic, package: package)
+      diff = described_class.compute_diff(topic:, package:)
       expect(diff.removes.map { |aba| aba.article.title }).to eq(['Active learning'])
       expect(diff.adds).to be_empty
       expect(diff.centrality_changes).to be_empty
@@ -65,7 +65,7 @@ describe TopicBuilderSyncService do
         { 'title' => 'Achievement gap', 'centrality' => 9 },
         { 'title' => 'Active learning', 'centrality' => 3 }
       ])
-      diff = described_class.compute_diff(topic: topic, package: package)
+      diff = described_class.compute_diff(topic:, package:)
       expect(diff.centrality_changes.map { |c| [c.title, c.from, c.to] })
         .to contain_exactly(['Achievement gap', 8, 9], ['Active learning', nil, 3])
     end
@@ -76,7 +76,7 @@ describe TopicBuilderSyncService do
         { 'title' => 'Achievement gap', 'centrality' => 8 },
         { 'title' => 'Active learning', 'centrality' => nil }
       ])
-      diff = described_class.compute_diff(topic: topic, package: package)
+      diff = described_class.compute_diff(topic:, package:)
       expect(diff).to be_empty
     end
   end
@@ -89,12 +89,12 @@ describe TopicBuilderSyncService do
         { 'title' => 'Bloom\'s taxonomy', 'centrality' => 5 }
       ])
       expect {
-        described_class.new(topic: topic, package: package).sync!
+        described_class.new(topic:, package:).sync!
       }.to change { bag.reload.article_bag_articles.count }.from(2).to(3)
         .and change(Article, :count).by(1)
 
       added = bag.article_bag_articles.joins(:article)
-                 .find_by('articles.title' => 'Bloom\'s taxonomy')
+        .find_by('articles.title' => 'Bloom\'s taxonomy')
       expect(added.centrality).to eq(5)
     end
 
@@ -104,11 +104,11 @@ describe TopicBuilderSyncService do
         { 'title' => 'Active learning', 'centrality' => nil }
       ])
       expect {
-        described_class.new(topic: topic, package: package).sync!
-      }.not_to change { bag.reload.article_bag_articles.count }
+        described_class.new(topic:, package:).sync!
+      }.not_to(change { bag.reload.article_bag_articles.count })
 
       aba = bag.article_bag_articles.joins(:article)
-               .find_by('articles.title' => 'Achievement gap')
+        .find_by('articles.title' => 'Achievement gap')
       expect(aba.centrality).to eq(9)
     end
 
@@ -117,7 +117,7 @@ describe TopicBuilderSyncService do
         { 'title' => 'Achievement gap', 'centrality' => 8 }
       ])
       expect {
-        described_class.new(topic: topic, package: package).sync!
+        described_class.new(topic:, package:).sync!
       }.to change { bag.reload.article_bag_articles.count }.from(2).to(1)
 
       remaining_titles = bag.article_bag_articles.includes(:article).map { |a| a.article.title }
@@ -126,16 +126,16 @@ describe TopicBuilderSyncService do
 
     it 'hard-deletes topic-scoped analytics for removed articles' do
       analytic_keep = TopicArticleAnalytic.create!(
-        topic: topic, article: article_a, average_daily_views: 100
+        topic:, article: article_a, average_daily_views: 100
       )
       analytic_remove = TopicArticleAnalytic.create!(
-        topic: topic, article: article_b, average_daily_views: 50
+        topic:, article: article_b, average_daily_views: 50
       )
 
       package = package_with([
         { 'title' => 'Achievement gap', 'centrality' => 8 }
       ])
-      described_class.new(topic: topic, package: package).sync!
+      described_class.new(topic:, package:).sync!
 
       expect(TopicArticleAnalytic.exists?(analytic_keep.id)).to be true
       expect(TopicArticleAnalytic.exists?(analytic_remove.id)).to be false
@@ -143,7 +143,7 @@ describe TopicBuilderSyncService do
 
     it 'hard-deletes topic-scoped TopicArticleTimepoints for removed articles ' \
        'while preserving the underlying article-scoped ArticleTimepoint' do
-      tt = TopicTimepoint.create!(topic: topic, timestamp: Date.new(2026, 2, 1))
+      tt = TopicTimepoint.create!(topic:, timestamp: Date.new(2026, 2, 1))
       at_keep = ArticleTimepoint.create!(article: article_a, timestamp: Date.new(2026, 2, 1))
       at_remove = ArticleTimepoint.create!(article: article_b, timestamp: Date.new(2026, 2, 1))
       tat_keep = TopicArticleTimepoint.create!(topic_timepoint: tt, article_timepoint: at_keep)
@@ -152,7 +152,7 @@ describe TopicBuilderSyncService do
       package = package_with([
         { 'title' => 'Achievement gap', 'centrality' => 8 }
       ])
-      described_class.new(topic: topic, package: package).sync!
+      described_class.new(topic:, package:).sync!
 
       expect(TopicArticleTimepoint.exists?(tat_keep.id)).to be true
       expect(TopicArticleTimepoint.exists?(tat_remove.id)).to be false
@@ -163,7 +163,7 @@ describe TopicBuilderSyncService do
 
     it 'updates Topic.tb_handle to the package handle' do
       package = package_with([], handle: 'tbp_brand_new')
-      described_class.new(topic: topic, package: package).sync!
+      described_class.new(topic:, package:).sync!
       expect(topic.reload.tb_handle).to eq('tbp_brand_new')
     end
 
@@ -172,7 +172,7 @@ describe TopicBuilderSyncService do
         { 'title' => 'Achievement gap', 'centrality' => 8 },
         { 'title' => 'Active learning', 'centrality' => nil }
       ], handle: 'tbp_brand_new')
-      described_class.new(topic: topic, package: package).sync!
+      described_class.new(topic:, package:).sync!
       expect(topic.reload.tb_handle).to eq('tbp_brand_new')
     end
 
@@ -185,7 +185,7 @@ describe TopicBuilderSyncService do
       allow(Article).to receive(:find_or_create_by!).and_raise(ActiveRecord::RecordInvalid)
 
       expect {
-        described_class.new(topic: topic, package: package).sync!
+        described_class.new(topic:, package:).sync!
       }.to raise_error(ActiveRecord::RecordInvalid)
 
       # The remove of "Active learning" should have rolled back too.

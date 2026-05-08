@@ -60,10 +60,8 @@ class ImportsController < ApplicationController
   rescue TopicBuilderPackageService::NetworkError => e
     @network_error = e.message
     render :network_error, status: :bad_gateway
-  rescue TopicBuilderImportService::UnknownWikiError => e
-    @import_error = e.message
-    render :import_error, status: :unprocessable_entity
-  rescue TopicBuilderImportService::ValidationError => e
+  rescue TopicBuilderImportService::UnknownWikiError,
+         TopicBuilderImportService::ValidationError => e
     @import_error = e.message
     render :import_error, status: :unprocessable_entity
   end
@@ -71,7 +69,7 @@ class ImportsController < ApplicationController
   private
 
   def apply_create(package)
-    importer = TopicBuilderImportService.new(package: package, topic_editor: current_admin_user)
+    importer = TopicBuilderImportService.new(package:, topic_editor: current_admin_user)
     topic = importer.import!
 
     # Pre-generate the jid and write it to the topic BEFORE enqueueing,
@@ -79,17 +77,17 @@ class ImportsController < ApplicationController
     # the controller has a chance to record the id.
     jid = SecureRandom.hex(12)
     topic.update!(article_import_job_id: jid)
-    ImportTopicBuilderArticlesJob.set(jid: jid).perform_async(topic.id, @handle)
+    ImportTopicBuilderArticlesJob.set(jid:).perform_async(topic.id, @handle)
 
     article_count = package['article_count'] || package.fetch('articles', []).size
-    redirect_to "/topics/#{topic.id}",
-                notice: "Imported '#{topic.name}'. Ingesting #{article_count} articles in the background."
+    notice = "Imported '#{topic.name}'. Ingesting #{article_count} articles in the background."
+    redirect_to "/topics/#{topic.id}", notice:
   end
 
   def apply_sync(topic)
     jid = SecureRandom.hex(12)
     topic.update!(article_import_job_id: jid)
-    SyncTopicBuilderArticlesJob.set(jid: jid).perform_async(topic.id, @handle)
+    SyncTopicBuilderArticlesJob.set(jid:).perform_async(topic.id, @handle)
 
     redirect_to "/topics/#{topic.id}",
                 notice: "Syncing '#{topic.name}' from Topic Builder in the background."

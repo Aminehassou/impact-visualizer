@@ -21,6 +21,7 @@ class TopicBuilderSyncService
 
   attr_reader :topic, :package
 
+  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
   def self.compute_diff(topic:, package:)
     bag = topic.active_article_bag
     existing = bag ? bag.article_bag_articles.includes(:article).to_a : []
@@ -29,7 +30,7 @@ class TopicBuilderSyncService
     package_entries = package.fetch('articles', []).reject do |entry|
       entry['title'].to_s.empty?
     end
-    package_titles = package_entries.map { |e| e['title'].to_s }.to_set
+    package_titles = package_entries.to_set { |e| e['title'].to_s }
 
     adds = package_entries.reject { |e| by_title.key?(e['title'].to_s) }
     removes = existing.reject { |aba| package_titles.include?(aba.article.title) }
@@ -40,8 +41,9 @@ class TopicBuilderSyncService
       CentralityChange.new(title: entry['title'], from: aba.centrality, to: entry['centrality'])
     end
 
-    Diff.new(adds: adds, removes: removes, centrality_changes: centrality_changes)
+    Diff.new(adds:, removes:, centrality_changes:)
   end
+  # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity
 
   def initialize(topic:, package:)
     @topic = topic
@@ -49,7 +51,7 @@ class TopicBuilderSyncService
   end
 
   def sync!
-    diff = self.class.compute_diff(topic: topic, package: package)
+    diff = self.class.compute_diff(topic:, package:)
     bag = topic.active_article_bag
 
     Topic.transaction do
@@ -87,7 +89,7 @@ class TopicBuilderSyncService
     return if changes.empty?
 
     abas_by_title = bag.article_bag_articles.includes(:article)
-                       .index_by { |aba| aba.article.title }
+      .index_by { |aba| aba.article.title }
 
     changes.each do |change|
       aba = abas_by_title[change.title]
@@ -101,8 +103,8 @@ class TopicBuilderSyncService
 
     adds.each do |entry|
       title = entry['title'].to_s
-      article = Article.find_or_create_by!(title: title, wiki: topic.wiki)
-      ArticleBagArticle.find_or_create_by!(article_bag: bag, article: article) do |aba|
+      article = Article.find_or_create_by!(title:, wiki: topic.wiki)
+      ArticleBagArticle.find_or_create_by!(article_bag: bag, article:) do |aba|
         aba.centrality = entry['centrality']
       end
     end

@@ -6,15 +6,19 @@
 # actionable message.
 class TopicBuilderImportService
   class Error < StandardError; end
+
   class UnknownWikiError < Error
     attr_reader :language
+
     def initialize(language)
       @language = language
       super("Impact Visualizer is not configured for the '#{language}' wiki.")
     end
   end
+
   class ValidationError < Error
     attr_reader :record
+
     def initialize(record)
       @record = record
       super(record.errors.full_messages.join('; '))
@@ -32,6 +36,7 @@ class TopicBuilderImportService
     @topic_editor = topic_editor
   end
 
+  # rubocop:disable Metrics/AbcSize
   def import!
     config = package.fetch('config')
     wiki = resolve_wiki!(config['wiki'])
@@ -45,29 +50,28 @@ class TopicBuilderImportService
         start_date: config['start_date'],
         end_date: config['end_date'],
         timepoint_day_interval: config['timepoint_day_interval'],
-        wiki: wiki,
+        wiki:,
         display: false,
         tb_handle: handle,
         tb_source_topic_id: package['source_topic_id']
       )
 
-      ArticleBag.create!(topic: topic, name: "#{topic.slug.titleize} Articles")
+      ArticleBag.create!(topic:, name: "#{topic.slug.titleize} Articles")
 
-      if topic_editor && !topic_editor.is_a?(AdminUser)
-        topic_editor.topics << topic
-      end
+      topic_editor.topics << topic if topic_editor && !topic_editor.is_a?(AdminUser)
 
       topic
     end
   rescue ActiveRecord::RecordInvalid => e
-    raise ValidationError.new(e.record)
+    raise ValidationError, e.record
   end
+  # rubocop:enable Metrics/AbcSize
 
   private
 
   def resolve_wiki!(language)
-    wiki = Wiki.find_by(language: language, project: 'wikipedia')
-    raise UnknownWikiError.new(language) unless wiki
+    wiki = Wiki.find_by(language:, project: 'wikipedia')
+    raise UnknownWikiError, language unless wiki
     wiki
   end
 end

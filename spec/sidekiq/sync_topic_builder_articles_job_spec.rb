@@ -8,11 +8,11 @@ RSpec.describe SyncTopicBuilderArticlesJob, type: :job do
   let(:url) { "https://topic-builder.wikiedu.org/packages/#{handle}" }
   let(:source_topic_id) { 42 }
   let(:topic) do
-    create(:topic, wiki: wiki, tb_handle: 'tbp_old', tb_source_topic_id: source_topic_id)
+    create(:topic, wiki:, tb_handle: 'tbp_old', tb_source_topic_id: source_topic_id)
   end
   let(:bag) { topic.active_article_bag }
-  let(:article_a) { Article.create!(title: 'Achievement gap', wiki: wiki, pageid: 1) }
-  let(:article_b) { Article.create!(title: 'Active learning', wiki: wiki, pageid: 2) }
+  let(:article_a) { Article.create!(title: 'Achievement gap', wiki:, pageid: 1) }
+  let(:article_b) { Article.create!(title: 'Active learning', wiki:, pageid: 2) }
   let(:package) do
     {
       'handle' => handle,
@@ -42,7 +42,7 @@ RSpec.describe SyncTopicBuilderArticlesJob, type: :job do
     expect(titles).to contain_exactly('Achievement gap', 'Bloom\'s taxonomy')
 
     centrality = bag.article_bag_articles.joins(:article)
-                    .find_by('articles.title' => 'Achievement gap').centrality
+      .find_by('articles.title' => 'Achievement gap').centrality
     expect(centrality).to eq(9)
   end
 

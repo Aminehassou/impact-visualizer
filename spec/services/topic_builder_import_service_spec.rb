@@ -30,7 +30,7 @@ describe TopicBuilderImportService do
   describe '#import!' do
     it 'creates a Topic and an empty ArticleBag atomically (articles are imported async)' do
       expect {
-        described_class.new(package: package).import!
+        described_class.new(package:).import!
       }.to change(Topic, :count).by(1)
         .and change(ArticleBag, :count).by(1)
         .and change(Article, :count).by(0)
@@ -38,7 +38,7 @@ describe TopicBuilderImportService do
     end
 
     it 'sets topic fields from the package config' do
-      topic = described_class.new(package: package).import!
+      topic = described_class.new(package:).import!
       expect(topic).to have_attributes(
         name: 'Educational Psychology',
         slug: 'educational-psychology',
@@ -55,31 +55,31 @@ describe TopicBuilderImportService do
 
     it 'populates tb_source_topic_id from the package (used to detect re-publishes)' do
       package['source_topic_id'] = 42
-      topic = described_class.new(package: package).import!
+      topic = described_class.new(package:).import!
       expect(topic.tb_source_topic_id).to eq(42)
     end
 
     it 'leaves tb_source_topic_id nil for legacy packages without the field' do
-      topic = described_class.new(package: package).import!
+      topic = described_class.new(package:).import!
       expect(topic.tb_source_topic_id).to be_nil
     end
 
     it 'raises UnknownWikiError when IV has no row for the language' do
       package['config']['wiki'] = 'klingon'
       expect {
-        described_class.new(package: package).import!
+        described_class.new(package:).import!
       }.to raise_error(TopicBuilderImportService::UnknownWikiError, /klingon/)
     end
 
     it 'associates the topic with a non-admin topic_editor' do
       editor = create(:topic_editor)
-      topic = described_class.new(package: package, topic_editor: editor).import!
+      topic = described_class.new(package:, topic_editor: editor).import!
       expect(editor.topics).to include(topic)
     end
 
     it 'does not associate when topic_editor is an admin (admin posture)' do
       admin = create(:admin_user, email: 'admin@example.com', password: 'password123')
-      topic = described_class.new(package: package, topic_editor: admin).import!
+      topic = described_class.new(package:, topic_editor: admin).import!
       expect(topic.topic_editors).to be_empty
     end
   end

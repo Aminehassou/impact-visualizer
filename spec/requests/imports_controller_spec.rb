@@ -134,10 +134,10 @@ describe ImportsController do
   describe 'sync flow (re-publish of an already-imported topic)' do
     let(:source_topic_id) { 42 }
     let(:existing_topic) do
-      create(:topic, wiki: wiki, tb_handle: 'tbp_old', tb_source_topic_id: source_topic_id)
+      create(:topic, wiki:, tb_handle: 'tbp_old', tb_source_topic_id: source_topic_id)
     end
     let(:bag) { existing_topic.active_article_bag }
-    let(:article) { Article.create!(title: 'Achievement gap', wiki: wiki, pageid: 1) }
+    let(:article) { Article.create!(title: 'Achievement gap', wiki:, pageid: 1) }
     let(:sync_package) do
       package.merge(
         'source_topic_id' => source_topic_id,
@@ -150,7 +150,7 @@ describe ImportsController do
 
     before do
       sign_in admin
-      create(:article_bag_article, article_bag: bag, article: article, centrality: 8)
+      create(:article_bag_article, article_bag: bag, article:, centrality: 8)
     end
 
     describe 'GET /imports/:handle' do

@@ -228,3 +228,12 @@ Layout/FirstHashElementIndentation:
   Enabled: false
 Layout/FirstArrayElementIndentation:
   EnforcedStyle: consistent
+Style/BlockDelimiters:
+  # `expect { ... }.to change(X).by(N).and change(Y).by(M)` — the chained
+  # matcher form RSpec specs lean on — gets ugly when forced to do/end.
+  EnforcedStyle: braces_for_chaining
+Layout/MultilineMethodCallIndentation:
+  # Default 'aligned' produces cascading indentation when long matchers
+  # are chained off `expect { ... }.to change(X).by(N).and change(Y)…`.
+  # 'indented' just keeps a 2-space indent under the start of the chain.
+  EnforcedStyle: indented

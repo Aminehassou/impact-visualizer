@@ -42,15 +42,7 @@ class GenerateArticleAnalyticsJob
 
     # Pre-load the recent-analytics set in one query rather than one
     # SELECT per article inside the Parallel loop.
-    recently_processed_article_ids = if force
-      Set.new
-    else
-      TopicArticleAnalytic
-        .where(topic_id: topic.id)
-        .where('updated_at > ?', RECENCY_WINDOW.ago)
-        .pluck(:article_id)
-        .to_set
-    end
+    recently_processed_article_ids = recently_processed_ids(topic, force:)
 
     start_date = topic.start_date || Date.current.beginning_of_year
     end_date = topic.end_date || Date.current.end_of_year
@@ -163,6 +155,15 @@ class GenerateArticleAnalyticsJob
   end
 
   private
+
+  def recently_processed_ids(topic, force:)
+    return Set.new if force
+    TopicArticleAnalytic
+      .where(topic_id: topic.id)
+      .where('updated_at > ?', RECENCY_WINDOW.ago)
+      .pluck(:article_id)
+      .to_set
+  end
 
   # The TB handoff is a one-click flow: ingest → analytics → timepoint
   # build, all auto-chained. For CSV-driven topics the user still
