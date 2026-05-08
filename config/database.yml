@@ -1,6 +1,8 @@
 development:
   adapter: postgresql
   database: impact-visualizer-development
+  user: <%= ENV.fetch('PGUSER') %>
+  password: <%= ENV.fetch('PGPASSWORD') %>
   host: <%= ENV.fetch('PGHOST', 'localhost') %>
   port: <%= ENV.fetch('PGPORT', 5432) %>
   pool: 100
