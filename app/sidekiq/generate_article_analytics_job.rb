@@ -14,7 +14,15 @@ class GenerateArticleAnalyticsJob
   # Retry-After + 0–3 s jitter still catches the occasional burst.
   THREADS_COUNT = 3
 
-  def perform(topic_id)
+  # If a TopicArticleAnalytic for (topic, article) was updated within this
+  # window, treat it as fresh and skip the ~16 Wikipedia API calls per
+  # article. Catches the common interrupt-restart case (e.g., a deploy
+  # killed an in-progress run): the new run resumes from where the old
+  # one left off instead of redoing already-fetched articles. Pass
+  # force=true to bypass and refresh everything.
+  RECENCY_WINDOW = 6.hours
+
+  def perform(topic_id, force = false)
     @expiration = 60 * 60 * 24 * 7
 
     topic = Topic.find topic_id
@@ -30,7 +38,19 @@ class GenerateArticleAnalyticsJob
 
     total(articles.count)
     at(0, 'Starting article analytics generation')
-    store(skipped: 0)
+    store(skipped: 0, cached: 0)
+
+    # Pre-load the recent-analytics set in one query rather than one
+    # SELECT per article inside the Parallel loop.
+    recently_processed_article_ids = if force
+      Set.new
+    else
+      TopicArticleAnalytic
+        .where(topic_id: topic.id)
+        .where('updated_at > ?', RECENCY_WINDOW.ago)
+        .pluck(:article_id)
+        .to_set
+    end
 
     start_date = topic.start_date || Date.current.beginning_of_year
     end_date = topic.end_date || Date.current.end_of_year
@@ -41,9 +61,11 @@ class GenerateArticleAnalyticsJob
     article_stats_service = ArticleStatsService.new(wiki)
     progress_mutex = Mutex.new
     skipped_mutex = Mutex.new
+    cached_mutex = Mutex.new
     errored_mutex = Mutex.new
     done = 0
     skipped_count = 0
+    cached_count = 0
     errored_count = 0
 
     Parallel.each(articles, in_threads: THREADS_COUNT) do |article|
@@ -57,6 +79,12 @@ class GenerateArticleAnalyticsJob
         # Catch StandardError per article, log it, increment a
         # separate "errored" counter, and move on.
         begin
+          if recently_processed_article_ids.include?(article.id)
+            cached_mutex.synchronize { cached_count += 1; store(cached: cached_count) }
+            progress_mutex.synchronize { done += 1; at(done, "Cached: #{article.title}") }
+            next
+          end
+
           # skip if the page doesn't exist
           article_stats_service.update_details_for_article(article:)
           if article.reload.missing
@@ -125,7 +153,7 @@ class GenerateArticleAnalyticsJob
       end
     end
 
-    Rails.logger.info("[GenerateArticleAnalyticsJob] complete. processed=#{done}, skipped(missing)=#{skipped_count}, errored(transient)=#{errored_count}")
+    Rails.logger.info("[GenerateArticleAnalyticsJob] complete. processed=#{done}, cached(skipped-as-fresh)=#{cached_count}, skipped(missing)=#{skipped_count}, errored(transient)=#{errored_count}")
     topic.reload.update(generate_article_analytics_job_id: nil)
     chain_incremental_topic_build!(topic)
   end
