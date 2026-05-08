@@ -329,12 +329,21 @@
     }
 
     &Bounds {
-      display: flex;
-      justify-content: space-between;
-      margin: -3px 8px 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      margin: -3px 0 0;
       color: #616161;
       font-size: 11px;
       line-height: 1;
+
+      span:first-child {
+        transform: translateX(3px);
+      }
+
+      span:last-child {
+        justify-self: end;
+        transform: translateX(3px);
+      }
     }
 
     &Checkbox {
