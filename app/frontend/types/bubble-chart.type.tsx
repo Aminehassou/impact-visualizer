@@ -17,6 +17,7 @@ type ArticleAnalytics = {
   images_count: number;
   number_of_editors: number;
   incoming_links_count: number;
+  centrality: number | null;
   assessment_grade: string | null;
   publication_date: string | null;
   article_protections: ArticleProtection[];

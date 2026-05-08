@@ -48,24 +48,24 @@ class ImportService
 
   def import_articles(total: nil, at: nil)
     raise ImpactVisualizerErrors::CsvMissingForImport unless topic.articles_csv.attached?
-    csv_content = normalize_csv_content(topic.articles_csv.download.force_encoding('UTF-8'))
-    article_titles = CSV.parse(csv_content, headers: false, skip_blanks: true)
+    article_rows = parse_article_csv_content(topic.articles_csv.download.force_encoding('UTF-8'))
     article_bag = @topic.active_article_bag ||
                   ArticleBag.create(topic:, name: "#{topic.slug.titleize} Articles")
-    total&.call(article_titles.count)
+    total&.call(article_rows.count)
     count = 0
-    Parallel.each(article_titles, in_threads: 3) do |article_title|
+    Parallel.each(article_rows, in_threads: 3) do |article_row|
       ActiveRecord::Base.connection_pool.with_connection do
         count += 1
         at&.call(count)
-        import_article(article_title:, article_bag:)
+        import_article(article_row:, article_bag:)
         ActiveRecord::Base.connection_pool.release_connection
       end
     end
   end
 
-  def import_article(article_title:, article_bag:)
-    csv_title = article_title[0]
+  def import_article(article_row:, article_bag:)
+    csv_title = article_row[:title]
+    centrality = article_row[:centrality]
     page_info = @wiki_action_api.get_page_info(title: URI::DEFAULT_PARSER.unescape(csv_title))
     return unless page_info
     title = page_info['title']
@@ -83,7 +83,9 @@ class ImportService
 
     article = Article.find_or_create_by(title:, wiki: @wiki)
     article.update_details
-    ArticleBagArticle.find_or_create_by(article:, article_bag:)
+    article_bag_article = ArticleBagArticle.find_or_initialize_by(article:, article_bag:)
+    article_bag_article.centrality = centrality
+    article_bag_article.save!
   end
 
   def import_users(total: nil, at: nil)
@@ -102,5 +104,39 @@ class ImportService
         ActiveRecord::Base.connection_pool.release_connection
       end
     end
+  end
+
+  private
+
+  def parse_article_csv_content(content)
+    content.lines.filter_map { |line| parse_article_csv_line(line) }
+  end
+
+  def parse_article_csv_line(line)
+    stripped_line = line.strip
+    return if stripped_line.empty?
+
+    fields = parse_csv_line(stripped_line)
+    return if fields.empty?
+
+    centrality = fields.length > 1 ? parse_centrality(fields.last) : nil
+    title_fields = centrality ? fields[0...-1] : fields
+    title = title_fields.map(&:to_s).join(',').strip
+    return if title.empty?
+
+    { title:, centrality: }
+  end
+
+  def parse_csv_line(line)
+    CSV.parse_line(line, liberal_parsing: true) || []
+  rescue CSV::MalformedCSVError
+    [line]
+  end
+
+  def parse_centrality(value)
+    normalized = value.to_s.strip
+    return unless normalized.match?(/\A(?:[1-9]|10)\z/)
+
+    normalized.to_i
   end
 end

@@ -32,16 +32,11 @@
     align-items: stretch;
 
     @media (min-width: 768px) {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     @media (min-width: 1024px) {
-      grid-template-columns: repeat(3, 1fr);
-
-      .WikiBubbleChartFilterBox:nth-child(2) {
-        margin-left: -1px;
-        padding-left: 13px;
-      }
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
 
@@ -77,13 +72,6 @@
       height: 30px;
     }
 
-    &:has(> .BoxTitle) {
-      > *:not(.BoxTitle) {
-        margin-top: auto;
-        margin-bottom: auto;
-      }
-    }
-
     > div[id^="search-container"] {
       flex-grow: 1;
       display: flex;
@@ -109,6 +97,11 @@
     }
   }
 
+  &AxisControls &FilterBox {
+    justify-content: flex-start;
+    min-width: 0;
+  }
+
   &SortLabel {
     font-size: 13px;
     font-weight: 500;
@@ -124,12 +117,12 @@
   }
 
   &AxisIcon {
-    margin: 0 10px;
+    margin: 16px 10px 0;
   }
 
   &AxisControl {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
   }
 
@@ -199,6 +192,176 @@
     padding: 4px 8px;
     font-size: 13px;
     width: 100%;
+  }
+
+  .CentralityFilter {
+    display: grid;
+    grid-template-rows: auto auto;
+    gap: 0;
+    height: 100%;
+
+    &Header {
+      display: flex;
+      align-items: baseline;
+      justify-content: flex-start;
+      gap: 8px;
+
+      .BoxTitle {
+        flex: 0 0 auto;
+      }
+    }
+
+    &Value {
+      margin-left: auto;
+      font-size: 13px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    &Slider {
+      position: relative;
+      height: 24px;
+      margin: 3px 0 0;
+    }
+
+    &Track,
+    &Range {
+      position: absolute;
+      top: 50%;
+      height: 4px;
+      border-radius: 999px;
+      transform: translateY(-50%);
+    }
+
+    &Track {
+      left: 0;
+      right: 0;
+      background: #d9d9d9;
+    }
+
+    &Range {
+      background: #1976d2;
+    }
+
+    &Input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      border: 0;
+      box-shadow: none;
+      margin: 0;
+      outline: none;
+      padding: 0;
+      pointer-events: none;
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+
+      &:focus,
+      &:focus-visible {
+        border: 0;
+        box-shadow: none;
+        outline: none;
+      }
+
+      &::-webkit-slider-runnable-track {
+        height: 4px;
+        border: 0;
+        box-shadow: none;
+        background: transparent;
+      }
+
+      &::-webkit-slider-thumb {
+        width: 16px;
+        height: 16px;
+        border: 0;
+        box-shadow: none;
+        border-radius: 50%;
+        background: #1976d2;
+        cursor: pointer;
+        pointer-events: auto;
+        margin-top: -6px;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+
+      &::-moz-range-thumb {
+        width: 14px;
+        height: 14px;
+        border: 0;
+        box-shadow: none;
+        border-radius: 50%;
+        background: #1976d2;
+        cursor: pointer;
+        pointer-events: auto;
+        transform: translateY(-5px);
+      }
+
+      &::-moz-range-track {
+        background: transparent;
+        border: 0;
+      }
+
+      &--min {
+        z-index: 2;
+
+        &::-webkit-slider-thumb {
+          transform: translateX(-3px);
+        }
+
+        &::-moz-range-thumb {
+          transform: translate(-3px, -5px);
+        }
+      }
+
+      &--max {
+        z-index: 3;
+
+        &::-webkit-slider-thumb {
+          transform: translateX(3px);
+        }
+
+        &::-moz-range-thumb {
+          transform: translate(3px, -5px);
+        }
+      }
+    }
+
+    &Bounds {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      margin: -3px 0 0;
+      color: #616161;
+      font-size: 11px;
+      line-height: 1;
+
+      span:first-child {
+        transform: translateX(3px);
+      }
+
+      span:last-child {
+        justify-self: end;
+        transform: translateX(3px);
+      }
+    }
+
+    &Checkbox {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 0;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.2;
+
+      input {
+        flex: 0 0 auto;
+        width: 13px;
+        height: 13px;
+        margin: 0;
+      }
+    }
   }
 
   &TitleRow {
