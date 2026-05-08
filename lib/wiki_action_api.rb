@@ -137,23 +137,42 @@ class WikiActionApi
     data.dig('pages', 0, 'revisions').to_hashugar
   end
 
+  # Use the prop=contributors endpoint, which returns deduplicated
+  # registered contributors plus an anoncontributors total. This used
+  # to walk the entire revision history (rvlimit=500 paginated, no time
+  # bound) and dedupe in memory — for a heavily-edited article like
+  # Climate change with tens of thousands of revisions, that was
+  # ~100 paginated requests. prop=contributors with pclimit=max +
+  # apihighlimits (we have it via the wiki.token bearer) typically
+  # finishes in 1–2 requests.
   def get_unique_editors_count(pageid:)
-    require 'set'
+    registered_count = 0
+    anon_count = 0
+    query_parameters = {
+      pageids: [pageid],
+      prop: 'contributors',
+      pclimit: 'max',
+      formatversion: '2'
+    }
 
-    editors = Set.new
+    loop do
+      response = query(query_parameters:)
+      return 0 unless response
 
-    revisions = get_all_revisions(pageid:) || []
-    revisions.each do |rev|
-      userid = (rev['userid']).to_i
-      if userid.positive?
-        editors.add("id:#{userid}")
-      else
-        user = rev['user']
-        editors.add("user:#{user}") if user.present?
-      end
+      page = response.data.dig('pages', 0)
+      return 0 unless page
+
+      registered_count += (page['contributors'] || []).size
+      # anoncontributors is a single per-page total returned on every
+      # response — keep the latest value rather than summing.
+      anon_count = page['anoncontributors'].to_i if page['anoncontributors']
+
+      cont = response['continue']
+      break unless cont
+      query_parameters.merge!(cont)
     end
 
-    editors.size
+    registered_count + anon_count
   end
 
   def get_all_revisions_in_range(pageid:, start_timestamp:, end_timestamp:)
