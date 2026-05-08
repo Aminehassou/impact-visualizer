@@ -48,7 +48,10 @@ class TopicTimepointStatsService
       revisions_count_delta += topic_article_timepoint.revisions_count_delta || 0
       attributed_revisions_count_delta += topic_article_timepoint.attributed_revisions_count_delta || 0
       attributed_length_delta += topic_article_timepoint.attributed_length_delta || 0
-      attributed_articles_created_delta += 1 if topic_article_timepoint.attributed_creator
+      # Truthiness-only check; read the FK column directly instead of
+      # loading the User association, which was a second N+1 next to
+      # the article_timepoint one.
+      attributed_articles_created_delta += 1 if topic_article_timepoint.attributed_creator_id
       wp10_predictions << article_timepoint.wp10_prediction if article_timepoint.wp10_prediction
       wp10_prediction_categories << article_timepoint.wp10_prediction_category
       token_count += article_timepoint.token_count || 0
