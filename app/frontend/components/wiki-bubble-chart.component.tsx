@@ -42,6 +42,8 @@ interface WikiBubbleChartProps {
 
 const HEIGHT = 650;
 const LARGE_DATASET_THRESHOLD = 10000;
+const CENTRALITY_MIN = 1;
+const CENTRALITY_MAX = 10;
 
 const gradeGroups = [
   { id: "fa", label: "Featured", grades: ["FA", "FL"], dot: "#9CBDFF" },
@@ -130,6 +132,78 @@ function ProtectionFilterCheckboxes({
   );
 }
 
+function CentralityFilter({
+  min,
+  max,
+  includeUnassessed,
+  onMinChange,
+  onMaxChange,
+  onIncludeUnassessedChange,
+}: {
+  min: number;
+  max: number;
+  includeUnassessed: boolean;
+  onMinChange: (value: number) => void;
+  onMaxChange: (value: number) => void;
+  onIncludeUnassessedChange: (checked: boolean) => void;
+}) {
+  const minPercent =
+    ((min - CENTRALITY_MIN) / (CENTRALITY_MAX - CENTRALITY_MIN)) * 100;
+  const maxPercent =
+    ((max - CENTRALITY_MIN) / (CENTRALITY_MAX - CENTRALITY_MIN)) * 100;
+
+  return (
+    <div className="CentralityFilter">
+      <div className="CentralityFilterHeader">
+        <div className="BoxTitle">Centrality</div>
+        <label className="CentralityFilterCheckbox">
+          <input
+            type="checkbox"
+            checked={includeUnassessed}
+            onChange={(e) => onIncludeUnassessedChange(e.target.checked)}
+            aria-label="Include articles with no centrality"
+          />
+          <span>include articles without centrality</span>
+        </label>
+        <div className="CentralityFilterValue">
+          {min}-{max}
+        </div>
+      </div>
+      <div className="CentralityFilterSlider">
+        <div className="CentralityFilterTrack" />
+        <div
+          className="CentralityFilterRange"
+          style={{ left: `${minPercent}%`, right: `${100 - maxPercent}%` }}
+        />
+        <input
+          type="range"
+          min={CENTRALITY_MIN}
+          max={CENTRALITY_MAX}
+          step={1}
+          value={min}
+          onChange={(e) => onMinChange(Number(e.target.value))}
+          aria-label="Minimum centrality"
+          className="CentralityFilterInput CentralityFilterInput--min"
+        />
+        <input
+          type="range"
+          min={CENTRALITY_MIN}
+          max={CENTRALITY_MAX}
+          step={1}
+          value={max}
+          onChange={(e) => onMaxChange(Number(e.target.value))}
+          aria-label="Maximum centrality"
+          className="CentralityFilterInput CentralityFilterInput--max"
+        />
+      </div>
+      <div className="CentralityFilterBounds">
+        <span>{CENTRALITY_MIN}</span>
+        <span>{CENTRALITY_MAX}</span>
+      </div>
+    </div>
+  );
+}
+
 export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
   data = {},
   actions = false,
@@ -166,6 +240,10 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
     useState<boolean>(false);
   const [filterEditRestriction, setFilterEditRestriction] =
     useState<boolean>(false);
+  const [centralityMin, setCentralityMin] = useState<number>(CENTRALITY_MIN);
+  const [centralityMax, setCentralityMax] = useState<number>(CENTRALITY_MAX);
+  const [includeNoCentrality, setIncludeNoCentrality] =
+    useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [selectedArticle, setSelectedArticle] = useState<ArticleRow | null>(
@@ -358,6 +436,14 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
         return false;
       }
 
+      if (typeof row.centrality === "number") {
+        if (row.centrality < centralityMin || row.centrality > centralityMax) {
+          return false;
+        }
+      } else if (!includeNoCentrality) {
+        return false;
+      }
+
       const yValue = row[yAxisConfig.currentField];
       if (domainMin !== null && yValue < domainMin) {
         return false;
@@ -374,6 +460,9 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
     selectedGrades,
     filterMoveRestriction,
     filterEditRestriction,
+    centralityMin,
+    centralityMax,
+    includeNoCentrality,
     parsedYAxisDomain,
     yAxisConfig.currentField,
   ]);
@@ -484,6 +573,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
       "(!search_input || indexof(lower(datum.article), search_input) >= 0)",
       "((grade_FA && datum.assessment_grade == 'FA') || (grade_FL && datum.assessment_grade == 'FL') || (grade_GA && datum.assessment_grade == 'GA') || (grade_A && datum.assessment_grade == 'A') || (grade_B && datum.assessment_grade == 'B') || (grade_C && datum.assessment_grade == 'C') || (grade_Start && datum.assessment_grade == 'Start') || (grade_Stub && datum.assessment_grade == 'Stub') || (grade_List && datum.assessment_grade == 'List') || (grade_Unassessed && !datum.assessment_grade))",
       "((!filter_move_restriction || datum.has_move_restriction) && (!filter_edit_restriction || datum.has_edit_restriction))",
+      "((isValid(datum.centrality) && datum.centrality >= centrality_min && datum.centrality <= centrality_max) || (!isValid(datum.centrality) && include_no_centrality))",
     ].join(" && ");
 
     const isLargeDataset = sortedRows.length > LARGE_DATASET_THRESHOLD;
@@ -536,6 +626,9 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
         { name: "grade_Unassessed", value: selectedGrades.Unassessed },
         { name: "filter_move_restriction", value: filterMoveRestriction },
         { name: "filter_edit_restriction", value: filterEditRestriction },
+        { name: "centrality_min", value: centralityMin },
+        { name: "centrality_max", value: centralityMax },
+        { name: "include_no_centrality", value: includeNoCentrality },
         { name: "show_labels", value: showLabels },
       ],
 
@@ -698,6 +791,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
                 "Talk size (prev year)": isValid(datum.prev_talk_size) ? format(datum.prev_talk_size, ',') : 'n/a',
                 "Editors": format(datum.number_of_editors, ','),
                 "Incoming links": format(datum.incoming_links_count, ','),
+                "Centrality": isValid(datum.centrality) ? format(datum.centrality, ',') : 'n/a',
                 "Linguistic versions": format(datum.linguistic_versions_count, ','),
                 "Warning tags": format(datum.warning_tags_count, ','),
                 "Images": format(datum.images_count, ','),
@@ -843,6 +937,36 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
       viewRef.current.view.signal("filter_edit_restriction", checked);
       viewRef.current.view.runAsync();
     }
+  };
+
+  const updateCentralitySignals = (
+    min: number,
+    max: number,
+    includeUnassessed: boolean,
+  ) => {
+    if (viewRef.current) {
+      viewRef.current.view.signal("centrality_min", min);
+      viewRef.current.view.signal("centrality_max", max);
+      viewRef.current.view.signal("include_no_centrality", includeUnassessed);
+      viewRef.current.view.runAsync();
+    }
+  };
+
+  const handleCentralityMinChange = (value: number) => {
+    const nextMin = Math.min(value, centralityMax);
+    setCentralityMin(nextMin);
+    updateCentralitySignals(nextMin, centralityMax, includeNoCentrality);
+  };
+
+  const handleCentralityMaxChange = (value: number) => {
+    const nextMax = Math.max(value, centralityMin);
+    setCentralityMax(nextMax);
+    updateCentralitySignals(centralityMin, nextMax, includeNoCentrality);
+  };
+
+  const handleIncludeNoCentralityChange = (checked: boolean) => {
+    setIncludeNoCentrality(checked);
+    updateCentralitySignals(centralityMin, centralityMax, checked);
   };
 
   const handleShowLabelsChange = (checked: boolean) => {
@@ -1040,6 +1164,17 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
                   </select>
                 </div>
               </div>
+            </div>
+
+            <div className="WikiBubbleChartFilterBox">
+              <CentralityFilter
+                min={centralityMin}
+                max={centralityMax}
+                includeUnassessed={includeNoCentrality}
+                onMinChange={handleCentralityMinChange}
+                onMaxChange={handleCentralityMaxChange}
+                onIncludeUnassessedChange={handleIncludeNoCentralityChange}
+              />
             </div>
           </div>
 

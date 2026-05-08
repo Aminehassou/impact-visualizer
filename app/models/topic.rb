@@ -136,14 +136,22 @@ class Topic < ApplicationRecord
   end
 
   def article_analytics_data
+    centrality_join = ActiveRecord::Base.sanitize_sql_array(
+      [
+        'LEFT JOIN article_bag_articles ON article_bag_articles.article_id = topic_article_analytics.article_id AND article_bag_articles.article_bag_id = ?',
+        active_article_bag&.id
+      ]
+    )
+
     topic_article_analytics
       .joins(:article)
-      .pluck('articles.title', :average_daily_views, :prev_average_daily_views, :article_size, :prev_article_size, :talk_size, :prev_talk_size, :lead_section_size, :assessment_grade, :publication_date, :linguistic_versions_count, :warning_tags_count, :images_count, :number_of_editors, :article_protections, :incoming_links_count)
-      .map do |title, average_daily_views, prev_average_daily_views, article_size, prev_article_size, talk_size, prev_talk_size, lead_section_size, assessment_grade, publication_date, linguistic_versions_count, warning_tags_count, images_count, number_of_editors, article_protections, incoming_links_count|
+      .joins(centrality_join)
+      .pluck('articles.title', :average_daily_views, :prev_average_daily_views, :article_size, :prev_article_size, :talk_size, :prev_talk_size, :lead_section_size, :assessment_grade, :publication_date, :linguistic_versions_count, :warning_tags_count, :images_count, :number_of_editors, :article_protections, :incoming_links_count, 'article_bag_articles.centrality')
+      .map do |title, average_daily_views, prev_average_daily_views, article_size, prev_article_size, talk_size, prev_talk_size, lead_section_size, assessment_grade, publication_date, linguistic_versions_count, warning_tags_count, images_count, number_of_editors, article_protections, incoming_links_count, centrality|
         [title,
          { average_daily_views:, prev_average_daily_views:, article_size:, prev_article_size:, talk_size:, prev_talk_size:,
           lead_section_size:, assessment_grade:, publication_date:, linguistic_versions_count:, warning_tags_count:,
-          images_count:, number_of_editors:, article_protections:, incoming_links_count: }]
+          images_count:, number_of_editors:, article_protections:, incoming_links_count:, centrality: }]
       end
       .to_h
   end

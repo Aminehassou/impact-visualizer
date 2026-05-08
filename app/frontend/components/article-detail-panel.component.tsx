@@ -168,6 +168,14 @@ function ArticleDetailPanel({
                   </span>
                 </div>
                 <div className="ArticleDetailInfoRow">
+                  <span className="ArticleDetailInfoLabel">Centrality</span>
+                  <span className="ArticleDetailInfoValue">
+                    {article.centrality != null
+                      ? article.centrality.toLocaleString()
+                      : "—"}
+                  </span>
+                </div>
+                <div className="ArticleDetailInfoRow">
                   <span className="ArticleDetailInfoLabel">Warning tags</span>
                   <span className="ArticleDetailInfoValue">
                     {article.warning_tags_count != null

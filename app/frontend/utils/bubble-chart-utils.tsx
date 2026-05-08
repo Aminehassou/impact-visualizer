@@ -110,6 +110,7 @@ function convertAnalyticsToCSV(
     prev_talk_size: number | null;
     number_of_editors: number;
     incoming_links_count: number;
+    centrality: number | null;
     linguistic_versions_count: number;
     warning_tags_count: number;
     images_count: number;
@@ -120,7 +121,7 @@ function convertAnalyticsToCSV(
 ): string {
   let csvContent = "data:text/csv;charset=utf-8,";
   csvContent +=
-    "Article,Creation Date,Average Daily Views,Average Daily Views (prev year),Article Size,Article Size (prev year),Lead Section Size,Talk Size,Talk Size (prev year),Number of Editors,Incoming Links,Linguistic Versions,Warning Tags,Images,Assessment Grade,Protections\n";
+    "Article,Creation Date,Average Daily Views,Average Daily Views (prev year),Article Size,Article Size (prev year),Lead Section Size,Talk Size,Talk Size (prev year),Number of Editors,Incoming Links,Centrality,Linguistic Versions,Warning Tags,Images,Assessment Grade,Protections\n";
   rows.forEach((row) => {
     csvContent +=
       [
@@ -135,6 +136,7 @@ function convertAnalyticsToCSV(
         row.prev_talk_size ?? "",
         row.number_of_editors,
         row.incoming_links_count,
+        row.centrality ?? "",
         row.linguistic_versions_count,
         row.warning_tags_count,
         row.images_count,
