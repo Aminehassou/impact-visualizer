@@ -31,8 +31,10 @@ describe ClassificationService do
     let!(:subject) { described_class.new(topic:) }
     let!(:article) do
       import_service = ImportService.new(topic:)
-      article_bag_article = import_service.import_article(article_title: ['Sierra Ferrell'],
-                                                          article_bag: topic.active_article_bag)
+      article_bag_article = import_service.import_article(
+        article_row: { title: 'Sierra Ferrell' },
+        article_bag: topic.active_article_bag
+      )
       article_bag_article.article
     end
     let!(:classification) do

@@ -86,6 +86,7 @@ class ImportService
     article_bag_article = ArticleBagArticle.find_or_initialize_by(article:, article_bag:)
     article_bag_article.centrality = centrality
     article_bag_article.save!
+    article_bag_article
   end
 
   def import_users(total: nil, at: nil)
