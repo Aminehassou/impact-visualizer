@@ -159,9 +159,14 @@ class ArticleStatsService
     )
   end
 
+  # The get_* helpers below assume the caller has already invoked
+  # update_details_for_article(article:) to populate pageid / title /
+  # missing / first_revision_info. Each helper used to call it again
+  # itself; on a 6562-article analytics run that was ~9 redundant
+  # calls per article, each ending in an article.reload — ~59k extra
+  # DB round-trips, plus a per-call get_page_info API hit for any
+  # article in the missing-with-title state.
   def get_article_size_at_date(article:, date: Date.current)
-    update_details_for_article(article:)
-
     pageid = article.pageid
     return nil unless pageid
 
@@ -192,8 +197,6 @@ class ArticleStatsService
   end
 
   def get_lead_section_size_at_date(article:, date: Date.current)
-    update_details_for_article(article:)
-
     pageid = article.pageid
     return nil unless pageid
 
@@ -216,7 +219,6 @@ class ArticleStatsService
   end
 
   def get_linguistic_versions_count(article:)
-    update_details_for_article(article:)
     return 0 if article.missing
 
     title = article.title
@@ -231,7 +233,6 @@ class ArticleStatsService
   end
 
   def get_images_count(article:)
-    update_details_for_article(article:)
     return 0 if article.missing
 
     title = article.title
@@ -244,7 +245,6 @@ class ArticleStatsService
   end
 
   def get_warning_tags_count(article:)
-    update_details_for_article(article:)
     return 0 if article.missing
 
     title = article.title
@@ -283,7 +283,6 @@ class ArticleStatsService
   end
 
   def get_number_of_editors(article:)
-    update_details_for_article(article:)
     return 0 if article.missing
 
     pageid = article.pageid
@@ -296,7 +295,6 @@ class ArticleStatsService
   end
 
   def get_incoming_links_count(article:)
-    update_details_for_article(article:)
     return 0 if article.missing
 
     title = article.title
@@ -309,7 +307,6 @@ class ArticleStatsService
   end
 
   def get_article_protections(article:)
-    update_details_for_article(article:)
     return [] if article.missing
 
     pageid = article.pageid
