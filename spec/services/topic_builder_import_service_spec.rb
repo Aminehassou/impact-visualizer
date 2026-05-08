@@ -53,6 +53,17 @@ describe TopicBuilderImportService do
       expect(topic.end_date.to_date).to eq(Date.new(2026, 5, 30))
     end
 
+    it 'populates tb_source_topic_id from the package (used to detect re-publishes)' do
+      package['source_topic_id'] = 42
+      topic = described_class.new(package: package).import!
+      expect(topic.tb_source_topic_id).to eq(42)
+    end
+
+    it 'leaves tb_source_topic_id nil for legacy packages without the field' do
+      topic = described_class.new(package: package).import!
+      expect(topic.tb_source_topic_id).to be_nil
+    end
+
     it 'raises UnknownWikiError when IV has no row for the language' do
       package['config']['wiki'] = 'klingon'
       expect {

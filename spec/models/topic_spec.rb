@@ -349,7 +349,12 @@ end
 #  article_import_job_id             :string
 #  generate_article_analytics_job_id :string
 #  incremental_topic_build_job_id    :string
+#  tb_source_topic_id                :integer
 #  timepoint_generate_job_id         :string
 #  users_import_job_id               :string
 #  wiki_id                           :integer
+#
+# Indexes
+#
+#  index_topics_on_tb_source_topic_id  (tb_source_topic_id) WHERE (tb_source_topic_id IS NOT NULL)
 #

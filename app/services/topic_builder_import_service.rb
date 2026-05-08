@@ -47,7 +47,8 @@ class TopicBuilderImportService
         timepoint_day_interval: config['timepoint_day_interval'],
         wiki: wiki,
         display: false,
-        tb_handle: handle
+        tb_handle: handle,
+        tb_source_topic_id: package['source_topic_id']
       )
 
       ArticleBag.create!(topic: topic, name: "#{topic.slug.titleize} Articles")

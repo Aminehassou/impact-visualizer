@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sync from Topic Builder</title>
+  <%= render 'layout_head' %>
+  <style>
+    .diff-summary { margin: 1.5rem 0; padding: 1rem 1.25rem; background: #f6f7f9; border-radius: 4px; }
+    .diff-summary li { margin: 0.2rem 0; }
+    .diff-summary .add { color: #006400; }
+    .diff-summary .remove { color: #a00; }
+    .diff-summary .change { color: #b87000; }
+    .diff-section h3 { margin-top: 1.5rem; }
+    .diff-section .add-row td:first-child::before { content: "+ "; color: #006400; font-weight: 600; }
+    .diff-section .remove-row td:first-child::before { content: "− "; color: #a00; font-weight: 600; }
+    .diff-section .change-row td:first-child::before { content: "~ "; color: #b87000; font-weight: 600; }
+    .nochange { color: #666; font-style: italic; margin: 1rem 0; }
+    .scope-note { font-size: 0.85rem; color: #666; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Sync from Topic Builder</h1>
+
+  <p>This handoff is a re-publish of an existing topic
+  (<a href="/topics/<%= @existing_topic.id %>"><strong><%= @existing_topic.name %></strong></a>).
+  Review the changes below, then click <strong>Apply sync</strong>.</p>
+
+  <p class="scope-note">
+    Sync only updates the article list and centrality scores.
+    Config fields (name, description, dates, editor label) stay frozen
+    at the original-import values. To change those, delete the topic
+    and re-import.
+  </p>
+
+  <dl class="meta">
+    <div><dt>Topic:</dt> <dd><%= @existing_topic.name %></dd></div>
+    <div><dt>Current article count:</dt> <dd><%= @existing_topic.articles_count %></dd></div>
+    <div><dt>Package article count:</dt> <dd><%= @package['article_count'] %></dd></div>
+    <div><dt>New handle:</dt> <dd><code><%= @package['handle'] %></code></dd></div>
+    <div><dt>Source topic:</dt> <dd><%= @package['source_topic'] %></dd></div>
+  </dl>
+
+  <% if @diff.empty? %>
+    <p class="nochange">No changes to apply — the package matches the current article bag.</p>
+  <% else %>
+    <div class="diff-summary">
+      <strong>Summary:</strong>
+      <ul>
+        <% if @diff.adds.any? %>
+          <li class="add">+ <%= @diff.adds.size %> article<%= 's' if @diff.adds.size != 1 %> to add</li>
+        <% end %>
+        <% if @diff.removes.any? %>
+          <li class="remove">− <%= @diff.removes.size %> article<%= 's' if @diff.removes.size != 1 %> to remove (analytics will be hard-deleted)</li>
+        <% end %>
+        <% if @diff.centrality_changes.any? %>
+          <li class="change">~ <%= @diff.centrality_changes.size %> centrality change<%= 's' if @diff.centrality_changes.size != 1 %></li>
+        <% end %>
+      </ul>
+    </div>
+
+    <% if @diff.adds.any? %>
+      <div class="diff-section">
+        <h3>Articles to add (first <%= [@diff.adds.size, ImportsController::PREVIEW_ARTICLE_LIMIT].min %> of <%= @diff.adds.size %>)</h3>
+        <table>
+          <thead><tr><th>Title</th><th class="centrality">Centrality</th></tr></thead>
+          <tbody>
+            <% @diff.adds.first(ImportsController::PREVIEW_ARTICLE_LIMIT).each do |entry| %>
+              <tr class="add-row">
+                <td><%= entry['title'] %></td>
+                <td class="centrality"><%= entry['centrality'].nil? ? '—' : entry['centrality'] %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+
+    <% if @diff.removes.any? %>
+      <div class="diff-section">
+        <h3>Articles to remove (first <%= [@diff.removes.size, ImportsController::PREVIEW_ARTICLE_LIMIT].min %> of <%= @diff.removes.size %>)</h3>
+        <table>
+          <thead><tr><th>Title</th><th class="centrality">Centrality</th></tr></thead>
+          <tbody>
+            <% @diff.removes.first(ImportsController::PREVIEW_ARTICLE_LIMIT).each do |aba| %>
+              <tr class="remove-row">
+                <td><%= aba.article.title %></td>
+                <td class="centrality"><%= aba.centrality.nil? ? '—' : aba.centrality %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+
+    <% if @diff.centrality_changes.any? %>
+      <div class="diff-section">
+        <h3>Centrality changes (first <%= [@diff.centrality_changes.size, ImportsController::PREVIEW_ARTICLE_LIMIT].min %> of <%= @diff.centrality_changes.size %>)</h3>
+        <table>
+          <thead><tr><th>Title</th><th class="centrality">From → To</th></tr></thead>
+          <tbody>
+            <% @diff.centrality_changes.first(ImportsController::PREVIEW_ARTICLE_LIMIT).each do |c| %>
+              <tr class="change-row">
+                <td><%= c.title %></td>
+                <td class="centrality">
+                  <%= c.from.nil? ? '—' : c.from %> → <%= c.to.nil? ? '—' : c.to %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+
+    <%= form_with url: import_path(handle: @handle), method: :post, local: true, class: 'actions' do %>
+      <button type="submit" class="primary">Apply sync</button>
+    <% end %>
+  <% end %>
+</body>
+</html>

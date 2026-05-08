@@ -130,4 +130,84 @@ describe ImportsController do
       end
     end
   end
+
+  describe 'sync flow (re-publish of an already-imported topic)' do
+    let(:source_topic_id) { 42 }
+    let(:existing_topic) do
+      create(:topic, wiki: wiki, tb_handle: 'tbp_old', tb_source_topic_id: source_topic_id)
+    end
+    let(:bag) { existing_topic.active_article_bag }
+    let(:article) { Article.create!(title: 'Achievement gap', wiki: wiki, pageid: 1) }
+    let(:sync_package) do
+      package.merge(
+        'source_topic_id' => source_topic_id,
+        'articles' => [
+          { 'title' => 'Achievement gap', 'centrality' => 9 },
+          { 'title' => 'Bloom\'s taxonomy', 'centrality' => 5 }
+        ]
+      )
+    end
+
+    before do
+      sign_in admin
+      create(:article_bag_article, article_bag: bag, article: article, centrality: 8)
+    end
+
+    describe 'GET /imports/:handle' do
+      it 'renders the sync preview when source_topic_id matches an existing topic' do
+        stub_request(:get, url).to_return(
+          status: 200, body: sync_package.to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
+        get "/imports/#{handle}"
+        expect(response.status).to eq(200)
+        expect(response.body).to include('Sync from Topic Builder')
+        expect(response.body).to include(existing_topic.name)
+        expect(response.body).to include('Apply sync')
+      end
+
+      it 'falls back to create preview when source_topic_id is missing' do
+        stub_request(:get, url).to_return(
+          status: 200, body: package.to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
+        get "/imports/#{handle}"
+        expect(response.status).to eq(200)
+        expect(response.body).to include('Import topic')
+        expect(response.body).not_to include('Apply sync')
+      end
+
+      it 'falls back to create preview when no IV topic matches the source_topic_id' do
+        stub_request(:get, url).to_return(
+          status: 200,
+          body: package.merge('source_topic_id' => 99_999).to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
+        get "/imports/#{handle}"
+        expect(response.status).to eq(200)
+        expect(response.body).to include('Import topic')
+      end
+    end
+
+    describe 'POST /imports/:handle' do
+      it 'enqueues SyncTopicBuilderArticlesJob and redirects to the existing topic' do
+        stub_request(:get, url).to_return(
+          status: 200, body: sync_package.to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
+
+        expect {
+          post "/imports/#{handle}"
+        }.to change(SyncTopicBuilderArticlesJob.jobs, :size).by(1)
+          .and change(Topic, :count).by(0)
+          .and change(ImportTopicBuilderArticlesJob.jobs, :size).by(0)
+
+        expect(response).to redirect_to("/topics/#{existing_topic.id}")
+
+        enqueued = SyncTopicBuilderArticlesJob.jobs.last
+        expect(enqueued['args']).to eq([existing_topic.id, handle])
+        expect(enqueued['jid']).to eq(existing_topic.reload.article_import_job_id)
+      end
+    end
+  end
 end

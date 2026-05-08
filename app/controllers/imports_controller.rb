@@ -4,6 +4,12 @@
 # GET  /imports/:handle  renders a preview from the TB package.
 # POST /imports/:handle  creates the Topic + ArticleBag in a transaction.
 #
+# When the package's source_topic_id matches an existing IV topic
+# (a re-publish from TB), GET renders a sync diff preview instead of a
+# create preview, and POST applies the diff via TopicBuilderSyncService.
+# Sync only touches the article bag + centrality; config fields stay
+# frozen at the original-import values.
+#
 # v1 is admin-only on POST (matches the rest of IV's import surface area,
 # which lives behind ActiveAdmin). The GET preview is also admin-only for
 # v1; broaden in lockstep when POST opens up to authenticated editors.
@@ -18,7 +24,14 @@ class ImportsController < ApplicationController
   def show
     @package = TopicBuilderPackageService.fetch(@handle)
     TopicBuilderPackageService.assert_supported_schema!(@package)
-    @first_articles = @package.fetch('articles', []).first(PREVIEW_ARTICLE_LIMIT)
+    @existing_topic = lookup_existing_topic(@package)
+
+    if @existing_topic
+      @diff = TopicBuilderSyncService.compute_diff(topic: @existing_topic, package: @package)
+      render :sync_preview
+    else
+      @first_articles = @package.fetch('articles', []).first(PREVIEW_ARTICLE_LIMIT)
+    end
   rescue TopicBuilderPackageService::NotFound
     render :not_found, status: :not_found
   rescue TopicBuilderPackageService::SchemaVersionError => e
@@ -32,20 +45,13 @@ class ImportsController < ApplicationController
   def create
     package = TopicBuilderPackageService.fetch(@handle)
     TopicBuilderPackageService.assert_supported_schema!(package)
+    existing_topic = lookup_existing_topic(package)
 
-    importer = TopicBuilderImportService.new(package: package, topic_editor: current_admin_user)
-    topic = importer.import!
-
-    # Pre-generate the jid and write it to the topic BEFORE enqueueing,
-    # so a fast worker can't finish the job (and clear the column) before
-    # the controller has a chance to record the id.
-    jid = SecureRandom.hex(12)
-    topic.update!(article_import_job_id: jid)
-    ImportTopicBuilderArticlesJob.set(jid: jid).perform_async(topic.id, @handle)
-
-    article_count = package['article_count'] || package.fetch('articles', []).size
-    redirect_to "/topics/#{topic.id}",
-                notice: "Imported '#{topic.name}'. Ingesting #{article_count} articles in the background."
+    if existing_topic
+      apply_sync(existing_topic)
+    else
+      apply_create(package)
+    end
   rescue TopicBuilderPackageService::NotFound
     render :not_found, status: :not_found
   rescue TopicBuilderPackageService::SchemaVersionError => e
@@ -63,6 +69,37 @@ class ImportsController < ApplicationController
   end
 
   private
+
+  def apply_create(package)
+    importer = TopicBuilderImportService.new(package: package, topic_editor: current_admin_user)
+    topic = importer.import!
+
+    # Pre-generate the jid and write it to the topic BEFORE enqueueing,
+    # so a fast worker can't finish the job (and clear the column) before
+    # the controller has a chance to record the id.
+    jid = SecureRandom.hex(12)
+    topic.update!(article_import_job_id: jid)
+    ImportTopicBuilderArticlesJob.set(jid: jid).perform_async(topic.id, @handle)
+
+    article_count = package['article_count'] || package.fetch('articles', []).size
+    redirect_to "/topics/#{topic.id}",
+                notice: "Imported '#{topic.name}'. Ingesting #{article_count} articles in the background."
+  end
+
+  def apply_sync(topic)
+    jid = SecureRandom.hex(12)
+    topic.update!(article_import_job_id: jid)
+    SyncTopicBuilderArticlesJob.set(jid: jid).perform_async(topic.id, @handle)
+
+    redirect_to "/topics/#{topic.id}",
+                notice: "Syncing '#{topic.name}' from Topic Builder in the background."
+  end
+
+  def lookup_existing_topic(package)
+    source_topic_id = package['source_topic_id']
+    return nil if source_topic_id.blank?
+    Topic.find_by(tb_source_topic_id: source_topic_id)
+  end
 
   def set_handle
     @handle = params[:handle].to_s

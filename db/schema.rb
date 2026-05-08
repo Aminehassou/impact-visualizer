@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2026_05_01_000001) do
+ActiveRecord::Schema[7.0].define(version: 2026_05_08_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -277,6 +277,8 @@ ActiveRecord::Schema[7.0].define(version: 2026_05_01_000001) do
     t.string "incremental_topic_build_job_id"
     t.string "generate_article_analytics_job_id"
     t.string "tb_handle"
+    t.integer "tb_source_topic_id"
+    t.index ["tb_source_topic_id"], name: "index_topics_on_tb_source_topic_id", where: "(tb_source_topic_id IS NOT NULL)"
   end
 
   create_table "users", force: :cascade do |t|
