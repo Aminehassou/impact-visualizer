@@ -27,7 +27,7 @@
 
   <% if @package.dig('config', 'description').present? %>
     <h3>Description</h3>
-    <p><%= @package.dig('config', 'description') %></p>
+    <div class="description"><%= render_markdown(@package.dig('config', 'description')) %></div>
   <% end %>
 
   <h3>First <%= @first_articles.size %> articles</h3>

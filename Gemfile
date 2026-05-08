@@ -32,6 +32,7 @@ gem 'parallel', "~> 1.23"
 gem 'puma', '~> 5.0'
 gem 'pg'
 gem 'rails', '~> 7.0.5'
+gem 'redcarpet'
 gem 'rexml'
 gem 'sass-rails'
 gem 'sentry-ruby'

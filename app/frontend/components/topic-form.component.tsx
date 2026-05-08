@@ -99,7 +99,7 @@ function TopicForm({ onSubmit, defaultValues, saving }) {
           label="Topic Description"
           control={control}
           rules={{ required: "A description is required" }}
-          hint="A brief description of the Topic"
+          hint="A brief description of the Topic. Markdown is supported."
         />
       </div>
 

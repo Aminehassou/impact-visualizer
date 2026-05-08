@@ -348,6 +348,7 @@ GEM
       activerecord (>= 6.1.5)
       activesupport (>= 6.1.5)
       i18n
+    redcarpet (3.6.1)
     redis-client (0.22.2)
       connection_pool
     regexp_parser (2.8.1)
@@ -528,6 +529,7 @@ DEPENDENCIES
   pg
   puma (~> 5.0)
   rails (~> 7.0.5)
+  redcarpet
   rexml
   rspec-rails (~> 6.0.0)
   rspec-sidekiq

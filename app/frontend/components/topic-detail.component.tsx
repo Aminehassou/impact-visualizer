@@ -3,6 +3,8 @@ import _ from "lodash";
 import React from "react";
 import moment from "moment";
 import pluralize from "pluralize";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useLocation, useParams } from "react-router-dom";
 
@@ -51,7 +53,11 @@ function renderIntro({ topic, editorLabel }) {
           {_.get(topic, "wiki.project")}
         </h4>
 
-        {topic.description && <p>{topic.description}</p>}
+        {topic.description && (
+          <div className="TopicDetailIntro-description">
+            <Markdown remarkPlugins={[remarkGfm]}>{topic.description}</Markdown>
+          </div>
+        )}
       </div>
 
       {topic.owned && <TopicActions topic={topic} />}
