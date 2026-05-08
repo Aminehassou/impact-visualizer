@@ -55,6 +55,14 @@ RSpec.describe ImportTopicBuilderArticlesJob, type: :job do
     }.not_to change { bag.reload.article_bag_articles.count }
   end
 
+  it 'clears article_import_job_id when all retries are exhausted' do
+    topic.update(article_import_job_id: 'fake-jid')
+    described_class.sidekiq_retries_exhausted_block.call(
+      { 'args' => [topic.id, handle] }, RuntimeError.new('TB unreachable')
+    )
+    expect(topic.reload.article_import_job_id).to be_nil
+  end
+
   it 'auto-chains article analytics + incremental topic build on success' do
     expect {
       described_class.new.perform(topic.id, handle)

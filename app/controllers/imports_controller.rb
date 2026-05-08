@@ -36,8 +36,12 @@ class ImportsController < ApplicationController
     importer = TopicBuilderImportService.new(package: package, topic_editor: current_admin_user)
     topic = importer.import!
 
-    job_id = ImportTopicBuilderArticlesJob.perform_async(topic.id, @handle)
-    topic.update(article_import_job_id: job_id)
+    # Pre-generate the jid and write it to the topic BEFORE enqueueing,
+    # so a fast worker can't finish the job (and clear the column) before
+    # the controller has a chance to record the id.
+    jid = SecureRandom.hex(12)
+    topic.update!(article_import_job_id: jid)
+    ImportTopicBuilderArticlesJob.set(jid: jid).perform_async(topic.id, @handle)
 
     article_count = package['article_count'] || package.fetch('articles', []).size
     redirect_to "/topics/#{topic.id}",

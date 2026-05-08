@@ -9,6 +9,14 @@ class ImportTopicBuilderArticlesJob
   include Sidekiq::Status::Worker
   sidekiq_options queue: 'import', retry: 3
 
+  # When all retries are spent, clear article_import_job_id so the topic
+  # isn't permanently stuck in a "queued" state. The user can then delete
+  # and re-import (or, future-self, click a Retry button).
+  sidekiq_retries_exhausted do |msg, _ex|
+    topic_id = msg['args'].first
+    Topic.where(id: topic_id).update_all(article_import_job_id: nil)
+  end
+
   EXPIRATION_SECONDS = 60 * 60 * 24 * 30
 
   def perform(topic_id, handle)

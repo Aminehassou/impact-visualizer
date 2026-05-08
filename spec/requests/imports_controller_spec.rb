@@ -108,6 +108,10 @@ describe ImportsController do
 
         enqueued = ImportTopicBuilderArticlesJob.jobs.last
         expect(enqueued['args']).to eq([topic.id, handle])
+        # Topic's article_import_job_id matches the enqueued job's jid —
+        # i.e. the column was set before the job was enqueued, so a
+        # fast-worker race can't leave a stale id behind.
+        expect(enqueued['jid']).to eq(topic.article_import_job_id)
       end
 
       it 'shows the unknown-wiki error if IV has no row for the language' do
