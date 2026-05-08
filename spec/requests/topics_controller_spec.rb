@@ -446,4 +446,25 @@ describe TopicsController do
       expect(response.status).to eq(401)
     end
   end
+
+  describe '#topic_article_analytics' do
+    # Public endpoint (no before_action gate) — anyone can hit it for any
+    # topic id, including topics whose article_bags collection is empty.
+    # Regression: the bag-less branch used to NoMethodError on .articles.
+
+    it 'returns 404 when the topic has no article bag (Sentry IMPACT-VISUALIZER-1K)' do
+      topic = topic_editor.topics.first
+      topic.article_bags.destroy_all
+      get("/api/topics/#{topic.id}/topic_article_analytics")
+      expect(response.status).to eq(404)
+      expect(response.parsed_body['error']).to eq('No articles found')
+    end
+
+    it 'returns 404 when the topic has a bag but no articles' do
+      topic = topic_editor.topics.first
+      get("/api/topics/#{topic.id}/topic_article_analytics")
+      expect(response.status).to eq(404)
+      expect(response.parsed_body['error']).to eq('No articles found')
+    end
+  end
 end

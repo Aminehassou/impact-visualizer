@@ -77,7 +77,7 @@ class TopicsController < ApiController
     wiki = topic.wiki
     return render json: { error: 'Wiki not found' }, status: :not_found unless wiki
 
-    article_titles = topic.active_article_bag.articles.pluck(:title)
+    article_titles = topic.active_article_bag&.articles&.pluck(:title) || []
     return render json: { error: 'No articles found' }, status: :not_found if article_titles.empty?
 
     if topic.article_analytics_exist?
