@@ -14,6 +14,13 @@ class ArticleStatsService
     @visualizer_tools_api = VisualizerToolsApi.new(wiki)
     @lift_wing_api = LiftWingApi.new(wiki) if LiftWingApi.valid_wiki?(wiki)
     @wikimedia_pageviews_api = WikimediaPageviewsApi.new(wiki)
+    # Per-instance cache of (pageid, date) → revision. Both
+    # get_article_size_at_date and get_lead_section_size_at_date look
+    # up the same revision for end_date on every analytics run; this
+    # dedupes that pair (and any other repeat pageid/date pair within
+    # the lifetime of the service). Concurrent::Map is thread-safe
+    # so this is fine under GenerateArticleAnalyticsJob's Parallel.each.
+    @revision_cache = Concurrent::Map.new
   end
 
   def update_title_for_article(article:)
@@ -170,7 +177,7 @@ class ArticleStatsService
     pageid = article.pageid
     return nil unless pageid
 
-    revision = @wiki_action_api.get_page_revision_at_timestamp(pageid:, timestamp: date)
+    revision = cached_revision_at(pageid:, date:)
 
     revision ? revision['size'] : nil
   rescue StandardError => e
@@ -200,7 +207,7 @@ class ArticleStatsService
     pageid = article.pageid
     return nil unless pageid
 
-    revision = @wiki_action_api.get_page_revision_at_timestamp(pageid:, timestamp: date)
+    revision = cached_revision_at(pageid:, date:)
     return nil unless revision
 
     wikitext = @wiki_action_api.get_lead_section_wikitext(pageid:, revision_id: revision['revid'])
@@ -368,6 +375,17 @@ class ArticleStatsService
   end
 
   private
+
+  # Memoized fetch of get_page_revision_at_timestamp keyed on
+  # (pageid, date). Concurrent::Map.compute_if_absent is atomic on
+  # the key and won't store nil — so transient nils (e.g. from a 429
+  # retry exhaustion) are retried on subsequent calls instead of
+  # being poisoned into the cache.
+  def cached_revision_at(pageid:, date:)
+    @revision_cache.compute_if_absent([pageid, date]) do
+      @wiki_action_api.get_page_revision_at_timestamp(pageid:, timestamp: date)
+    end
+  end
 
   def fetch_language_links_batched(article_titles)
     wiki_lang = @wiki.language
