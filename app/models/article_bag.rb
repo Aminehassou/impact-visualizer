@@ -1,6 +1,13 @@
 # frozen_string_literal: true
 
 class ArticleBag < ApplicationRecord
+  # Bag-change auto-resume note: every code path that creates or
+  # repopulates an ArticleBag already chains the data-generation
+  # pipeline through Topic#queue_generate_article_analytics or via
+  # Topic#chain_to_analytics_if_ready when a CSV import job
+  # completes. No callback is needed here. New code paths that
+  # mutate bag contents must do the same.
+  #
   # Associations
   belongs_to :topic
   has_many :article_bag_articles, dependent: :destroy

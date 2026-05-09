@@ -191,6 +191,59 @@ class Topic < ApplicationRecord
     update generate_article_analytics_job_id: job_id
   end
 
+  # Called from ImportArticlesJob and ImportUsersJob when each finishes.
+  # The CSV flow queues both imports in parallel; whichever completes
+  # second triggers the next phase. The job_id checks here are the
+  # gate — analytics only runs once both imports have cleared.
+  def chain_to_analytics_if_ready
+    return if generate_article_analytics_job_id.present?
+    return if article_import_job_id.present?
+    return if users_import_job_id.present?
+    return unless articles_count.positive?
+
+    queue_generate_article_analytics
+  end
+
+  # True when any phase of the pipeline (import / analytics / build) has
+  # an active job_id recorded. Each job clears its own id on completion.
+  def data_generation_in_progress?
+    [article_import_job_id, users_import_job_id,
+     generate_article_analytics_job_id,
+     incremental_topic_build_job_id,
+     timepoint_generate_job_id].any?(&:present?)
+  end
+
+  # Unified state for the topic detail page's progress UI.
+  #   :running   — any phase has an active Sidekiq job
+  #   :complete  — has both topic summaries and article analytics
+  #   :idle      — pristine; show the Start button
+  # An :error state is intentionally omitted: a failed Sidekiq job
+  # surfaces via its per-phase *_status field, and the user can
+  # retry via the overflow menu.
+  def data_generation_state
+    return :running if data_generation_in_progress?
+    return :complete if most_recent_summary.present? && article_analytics_exist?
+    :idle
+  end
+
+  # Single kickoff for the unified data-generation pipeline. The
+  # frontend "Start" button hits this. If articles aren't yet
+  # imported, queues the import jobs (which chain into analytics on
+  # completion). If articles are present, queues analytics directly
+  # (which chains into the timepoint build).
+  def start_data_generation!
+    return :already_running if data_generation_in_progress?
+
+    if articles_count.zero?
+      raise ImpactVisualizerErrors::TopicNotReadyForDataGeneration unless articles_csv.attached?
+      queue_articles_import
+      queue_users_import if users_csv.attached?
+    else
+      queue_generate_article_analytics
+    end
+    :queued
+  end
+
   def incremental_topic_build_stage_message
     return '' unless incremental_topic_build_job_id
     stage = Sidekiq::Status::get(incremental_topic_build_job_id, :stage)
@@ -285,6 +338,34 @@ class Topic < ApplicationRecord
   def generate_article_analytics_message
     return '' unless generate_article_analytics_job_id
     Sidekiq::Status::get(generate_article_analytics_job_id, :message) || ''
+  end
+
+  # Per-job started_at (Unix epoch seconds). The frontend uses these
+  # together with pct_complete to compute a live ETA for the
+  # currently-running step.
+  def users_import_started_at
+    return nil unless users_import_job_id
+    Sidekiq::Status::get(users_import_job_id, :started_at)&.to_i
+  end
+
+  def articles_import_started_at
+    return nil unless article_import_job_id
+    Sidekiq::Status::get(article_import_job_id, :started_at)&.to_i
+  end
+
+  def generate_article_analytics_started_at
+    return nil unless generate_article_analytics_job_id
+    Sidekiq::Status::get(generate_article_analytics_job_id, :started_at)&.to_i
+  end
+
+  def incremental_topic_build_started_at
+    return nil unless incremental_topic_build_job_id
+    Sidekiq::Status::get(incremental_topic_build_job_id, :started_at)&.to_i
+  end
+
+  def timepoint_generate_started_at
+    return nil unless timepoint_generate_job_id
+    Sidekiq::Status::get(timepoint_generate_job_id, :started_at)&.to_i
   end
 
   # For ActiveAdmin

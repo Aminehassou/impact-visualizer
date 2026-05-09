@@ -38,9 +38,16 @@ if owned
                 :incremental_topic_build_percent_complete,
                 :incremental_topic_build_status,
                 :incremental_topic_build_stage_message,
+                :incremental_topic_build_stage,
                 :users_import_status,
                 :timepoint_generate_message,
-                :incremental_topic_build_message
+                :incremental_topic_build_message,
+                :users_import_started_at,
+                :articles_import_started_at,
+                :generate_article_analytics_started_at,
+                :incremental_topic_build_started_at,
+                :timepoint_generate_started_at,
+                :data_generation_state
 end
 
 if topic.most_recent_summary

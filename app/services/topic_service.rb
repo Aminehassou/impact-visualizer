@@ -67,6 +67,11 @@ class TopicService
     topic.queue_incremental_topic_build(force_updates:)
   end
 
+  def start_data_generation
+    raise ImpactVisualizerErrors::TopicMissing unless topic
+    topic.start_data_generation!
+  end
+
   def handle_auto_import(topic_params:)
     return unless auto_import
     import_users if topic.users_csv.attached? && topic_params[:users_csv].present?

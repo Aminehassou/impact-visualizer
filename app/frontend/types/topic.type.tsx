@@ -51,8 +51,17 @@ export default interface Topic {
   incremental_topic_build_percent_complete: number;
   generate_article_analytics_message: string;
   incremental_topic_build_stage_message: string;
+  incremental_topic_build_stage: string | null;
+  incremental_topic_build_message: string;
+  timepoint_generate_message: string;
   classifications: Array<Classification>;
   convert_tokens_to_words: boolean;
   tokens_per_word: number;
   tb_handle: string | null;
+  users_import_started_at: number | null;
+  articles_import_started_at: number | null;
+  generate_article_analytics_started_at: number | null;
+  incremental_topic_build_started_at: number | null;
+  timepoint_generate_started_at: number | null;
+  data_generation_state: "idle" | "running" | "complete";
 }

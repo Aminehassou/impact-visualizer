@@ -25,6 +25,7 @@ Rails.application.routes.draw do
       get :generate_timepoints, on: :member
       get :generate_article_analytics, on: :member
       get :incremental_topic_build, on: :member
+      post :start_data_generation, on: :member
       get :topic_article_analytics, on: :member
       get :language_links, on: :member
       get :article_language_comparison, on: :member

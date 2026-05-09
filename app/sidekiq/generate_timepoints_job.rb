@@ -7,6 +7,7 @@ class GenerateTimepointsJob
 
   def perform(topic_id, force_updates = false)
     @expiration = 60 * 60 * 24 * 30
+    store(started_at: Time.now.to_i)
 
     topic = Topic.find_by(id: topic_id)
     force_updates = ActiveModel::Type::Boolean.new.cast(force_updates)

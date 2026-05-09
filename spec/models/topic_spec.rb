@@ -196,6 +196,120 @@ RSpec.describe Topic do
     end
   end
 
+  describe '#data_generation_in_progress?' do
+    let(:topic) { create(:topic) }
+
+    it 'is false when no jobs are recorded' do
+      expect(topic.data_generation_in_progress?).to be(false)
+    end
+
+    it 'is true when any phase has a job_id' do
+      topic.update(generate_article_analytics_job_id: 'jid-xyz')
+      expect(topic.data_generation_in_progress?).to be(true)
+    end
+  end
+
+  describe '#data_generation_state' do
+    let(:topic) { create(:topic) }
+
+    it 'is :idle for a fresh topic with no data' do
+      allow(topic).to receive(:most_recent_summary).and_return(nil)
+      allow(topic).to receive(:article_analytics_exist?).and_return(false)
+      expect(topic.data_generation_state).to eq(:idle)
+    end
+
+    it 'is :running while any phase is queued' do
+      topic.update(article_import_job_id: 'jid-abc')
+      expect(topic.data_generation_state).to eq(:running)
+    end
+
+    it 'is :complete once both summaries and analytics exist' do
+      summary = instance_double(TopicSummary, present?: true)
+      allow(topic).to receive(:most_recent_summary).and_return(summary)
+      allow(topic).to receive(:article_analytics_exist?).and_return(true)
+      expect(topic.data_generation_state).to eq(:complete)
+    end
+  end
+
+  describe '#chain_to_analytics_if_ready' do
+    let(:topic) { create(:topic) }
+    let(:bag) { ArticleBag.create!(topic:, name: 'Test bag') }
+
+    before do
+      article = Article.create!(title: 'A', wiki: topic.wiki, pageid: 1)
+      ArticleBagArticle.create!(article_bag: bag, article:)
+    end
+
+    it 'queues analytics when no other phase is in flight' do
+      expect(GenerateArticleAnalyticsJob).to receive(:perform_async).and_return('xyz')
+      topic.chain_to_analytics_if_ready
+      expect(topic.reload.generate_article_analytics_job_id).to eq('xyz')
+    end
+
+    it 'no-ops when articles import is still in flight' do
+      topic.update(article_import_job_id: 'still-going')
+      expect(GenerateArticleAnalyticsJob).not_to receive(:perform_async)
+      topic.chain_to_analytics_if_ready
+    end
+
+    it 'no-ops when users import is still in flight' do
+      topic.update(users_import_job_id: 'still-going')
+      expect(GenerateArticleAnalyticsJob).not_to receive(:perform_async)
+      topic.chain_to_analytics_if_ready
+    end
+
+    it 'no-ops when articles_count is zero (no bag yet)' do
+      empty_topic = create(:topic)
+      expect(GenerateArticleAnalyticsJob).not_to receive(:perform_async)
+      empty_topic.chain_to_analytics_if_ready
+    end
+  end
+
+  describe '#start_data_generation!' do
+    let(:topic) { create(:topic) }
+
+    it 'queues analytics when articles already exist' do
+      bag = ArticleBag.create!(topic:, name: 'Test bag')
+      article = Article.create!(title: 'A', wiki: topic.wiki, pageid: 1)
+      ArticleBagArticle.create!(article_bag: bag, article:)
+      expect(GenerateArticleAnalyticsJob).to receive(:perform_async).and_return('xyz')
+      expect(topic.start_data_generation!).to eq(:queued)
+    end
+
+    it 'queues the article CSV import when articles are empty and a CSV is attached' do
+      topic.articles_csv.attach(
+        io: StringIO.new('Title,Centrality'), filename: 'a.csv', content_type: 'text/csv'
+      )
+      expect(ImportArticlesJob).to receive(:perform_async).and_return('xyz')
+      expect(topic.start_data_generation!).to eq(:queued)
+    end
+
+    it 'also queues the users import when a users CSV is attached' do
+      topic.articles_csv.attach(
+        io: StringIO.new('Title,Centrality'), filename: 'a.csv', content_type: 'text/csv'
+      )
+      topic.users_csv.attach(
+        io: StringIO.new('user1'), filename: 'u.csv', content_type: 'text/csv'
+      )
+      expect(ImportArticlesJob).to receive(:perform_async).and_return('xyz')
+      expect(ImportUsersJob).to receive(:perform_async).and_return('uid')
+      expect(topic.start_data_generation!).to eq(:queued)
+    end
+
+    it 'is a no-op when a phase is already in flight' do
+      topic.update(article_import_job_id: 'in-flight')
+      expect(ImportArticlesJob).not_to receive(:perform_async)
+      expect(GenerateArticleAnalyticsJob).not_to receive(:perform_async)
+      expect(topic.start_data_generation!).to eq(:already_running)
+    end
+
+    it 'raises when there are no articles and no CSV' do
+      expect {
+        topic.start_data_generation!
+      }.to raise_error(ImpactVisualizerErrors::TopicNotReadyForDataGeneration)
+    end
+  end
+
   describe '#timestamps' do
     let(:topic) { create(:topic, timepoint_day_interval: 7) }
 

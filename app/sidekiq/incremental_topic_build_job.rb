@@ -8,7 +8,9 @@ class IncrementalTopicBuildJob
   def perform(topic_id, stage = TimepointService::STAGES.first,
               queue_next_stage = false, force_updates = false)
     @expiration = 60 * 60 * 24 * 30
-    store(stage:)
+    # Each stage of the 4-stage build is its own Sidekiq job with its
+    # own status hash; the frontend computes ETA per-stage from this.
+    store(stage:, started_at: Time.now.to_i)
     job_id = @provider_job_id || @job_id || @jid
     topic = Topic.find_by(id: topic_id)
     topic.update incremental_topic_build_job_id: job_id

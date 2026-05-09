@@ -447,6 +447,41 @@ describe TopicsController do
     end
   end
 
+  describe '#start_data_generation' do
+    it 'kicks off data generation for a Topic belonging to Topic editor' do
+      sign_in topic_editor
+      topic = topic_editor.topics.first
+      expect_any_instance_of(TopicService)
+        .to(receive(:start_data_generation).and_return(:queued))
+      post("/api/topics/#{topic.id}/start_data_generation")
+      body = response.parsed_body.with_indifferent_access
+      expect(body[:name]).to eq(topic.name)
+      expect(response.status).to eq(200)
+    end
+
+    it 'returns 422 when the topic has no articles and no CSV attached' do
+      sign_in topic_editor
+      topic = topic_editor.topics.first
+      post("/api/topics/#{topic.id}/start_data_generation")
+      expect(response.status).to eq(422)
+      expect(response.parsed_body).to have_key('error')
+    end
+
+    it 'returns 404 without associated current_topic_editor' do
+      sign_in(create(:topic_editor))
+      topic = topic_editor.topics.first
+      expect do
+        post("/api/topics/#{topic.id}/start_data_generation")
+      end.to raise_error(ActiveRecord::RecordNotFound)
+    end
+
+    it 'returns unauthorized without current_topic_editor' do
+      topic = topic_editor.topics.first
+      post("/api/topics/#{topic.id}/start_data_generation")
+      expect(response.status).to eq(401)
+    end
+  end
+
   describe '#topic_article_analytics' do
     # Public endpoint (no before_action gate) — anyone can hit it for any
     # topic id, including topics whose article_bags collection is empty.

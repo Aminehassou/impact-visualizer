@@ -13,7 +13,7 @@ import Spinner from "./spinner.component";
 import StatBlock from "./stat-block.component";
 import QualityStatBlock from "./quality-stat-block.component";
 import StatDetail from "./stat-detail.component";
-import TopicActions from "./topic-actions.component";
+import TopicGenerationProgress from "./topic-generation-progress.component";
 
 // Misc
 import TopicService from "../services/topic.service";
@@ -60,7 +60,7 @@ function renderIntro({ topic, editorLabel }) {
         )}
       </div>
 
-      {topic.owned && <TopicActions topic={topic} />}
+      {topic.owned && <TopicGenerationProgress topic={topic} />}
     </div>
   );
 }

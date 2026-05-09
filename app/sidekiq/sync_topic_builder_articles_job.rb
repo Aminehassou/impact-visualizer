@@ -20,6 +20,7 @@ class SyncTopicBuilderArticlesJob
 
   def perform(topic_id, handle)
     @expiration = EXPIRATION_SECONDS
+    store(started_at: Time.now.to_i)
 
     topic = Topic.find(topic_id)
 

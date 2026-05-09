@@ -24,6 +24,7 @@ class GenerateArticleAnalyticsJob
 
   def perform(topic_id, force = false)
     @expiration = 60 * 60 * 24 * 7
+    store(started_at: Time.now.to_i)
 
     topic = Topic.find topic_id
     wiki = topic.wiki
@@ -165,12 +166,11 @@ class GenerateArticleAnalyticsJob
       .to_set
   end
 
-  # The TB handoff is a one-click flow: ingest → analytics → timepoint
-  # build, all auto-chained. For CSV-driven topics the user still
-  # drives each step manually from the topic-detail page, so don't
-  # auto-chain there.
+  # Every topic now flows through one unified pipeline (TB-imported,
+  # CSV, or manual): articles → analytics → timepoint build. The
+  # frontend kicks off the chain once via /start_data_generation and
+  # each job hands off to the next on completion.
   def chain_incremental_topic_build!(topic)
-    return unless topic.tb_handle.present?
     return if topic.incremental_topic_build_job_id.present?
 
     topic.queue_incremental_topic_build(queue_next_stage: true, force_updates: false)

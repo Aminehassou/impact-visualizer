@@ -28,145 +28,259 @@
   padding: 0 1.5rem 2rem;
 }
 
-.TopicActions {
-  min-width: 300px;
-  max-width: 400px;
+.TopicProgress {
+  min-width: 320px;
+  max-width: 420px;
   background: white;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
-  padding: 1rem;
+  padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 1rem;
+  gap: 0.85rem;
   margin-left: 3rem;
-
-  h4 {
-    margin-bottom: 0;
-  }
 }
 
-.TopicAction {
-  border-bottom: 1px solid $lightGrey;
-  padding: 1rem 0;
-
-  &:first-child {
-    padding-top: 0;
-  }
-
-  &:last-child {
-    padding-bottom: 0;
-    border-bottom: 0;
-  }
-
-  h4 {
-    color: $mediumLightGrey;
-    text-transform: uppercase;
-    font-size: 12px;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-  }
+.TopicProgress-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  position: relative;
 }
 
-.TopicActionStatus {
-  display: inline-block;
+.TopicProgress-title {
+  margin: 0;
+  flex: 1;
+}
+
+.TopicProgress-eta {
+  font-size: 0.75rem;
+  color: $mediumGrey;
+}
+
+/* ----- Skeleton bar chart that previews the eventual deliverable ----- */
+
+.ProgressChart {
+  width: 100%;
+  height: 70px;
+  display: block;
+}
+
+.ProgressChart-baseline {
+  stroke: $lightGrey;
+  stroke-width: 1;
+}
+
+.ProgressChart-bar {
+  /* Smoothly lift each bar from y=58 (zero) to its target height as
+     overall progress crosses its slot. Both y and height transition. */
+  transition: y 700ms cubic-bezier(0.22, 1, 0.36, 1),
+              height 700ms cubic-bezier(0.22, 1, 0.36, 1),
+              fill 350ms ease;
+  fill: $blue;
+}
+
+/* phase-tinted shading: each phase gets its own hue band */
+.ProgressChart-bar--phase-0 { fill: #6f8cd6; }   /* import: cool blue */
+.ProgressChart-bar--phase-1 { fill: #a06ec8; }   /* analytics: violet */
+.ProgressChart-bar--phase-2 { fill: #4caf85; }   /* timeline: green */
+
+.ProgressChart-bar--pending {
+  fill: $lightGrey;
+}
+
+.ProgressChart-bar--active {
+  /* The single bar currently being drawn pulses to convey activity. */
+  animation: ProgressChartBarPulse 1.4s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+@keyframes ProgressChartBarPulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+
+/* ----- Phase legend (3-column status row beneath the chart) ----- */
+
+.ProgressLegend {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.4rem;
+  font-size: 0.78rem;
   color: $mediumLightGrey;
-  text-transform: uppercase;
-  font-size: 10px;
-  font-weight: 600;
-  background: $blue;
-  color: white;
-  padding: 0.2rem 0.4rem;
 }
 
-.TopicActionStatus--queued {
-  background: $orange;
-}
-
-.TopicActionStatus--failed,
-.TopicActionStatus--interrupted {
-  background: $red;
-}
-
-.TopicActionStatus--working,
-.TopicActionStatus--retrying,
-.TopicActionStatus--complete {
-  background: $green;
-}
-
-.TopicAction-statusAndProgress {
+.ProgressLegend-item {
   display: flex;
-  flex-direction: row;
   align-items: center;
-  justify-content: flex-start;
-}
-
-.TopicAction-statusContainer {
-  display: flex;
-  flex-direction: column;
   gap: 0.35rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.TopicAction-messageRow {
-  font-size: 12px;
+.ProgressLegend-item--complete {
+  color: $mediumGrey;
+}
+
+.ProgressLegend-item--running {
   color: $mediumGrey;
   font-weight: 600;
 }
 
-.TopicAction-statusRow {
-  display: flex;
-  flex-direction: row;
+.ProgressLegend-marker {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-.TopicAction-statusMeta {
+.ProgressLegend-check {
+  color: white;
+  background: #4caf85;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.ProgressLegend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #a06ec8;
+  box-shadow: 0 0 0 0 rgba(160, 110, 200, 0.55);
+  animation: ProgressLegendPulse 1.4s ease-out infinite;
+}
+
+@keyframes ProgressLegendPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(160, 110, 200, 0.55); }
+  70%  { box-shadow: 0 0 0 8px rgba(160, 110, 200, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(160, 110, 200, 0); }
+}
+
+.ProgressLegend-item--phase-0 .ProgressLegend-dot { background: #6f8cd6; box-shadow: 0 0 0 0 rgba(111, 140, 214, 0.55); animation-name: ProgressLegendPulseImport; }
+.ProgressLegend-item--phase-2 .ProgressLegend-dot { background: #4caf85; box-shadow: 0 0 0 0 rgba(76, 175, 133, 0.55); animation-name: ProgressLegendPulseTl; }
+
+@keyframes ProgressLegendPulseImport {
+  0%   { box-shadow: 0 0 0 0 rgba(111, 140, 214, 0.55); }
+  70%  { box-shadow: 0 0 0 8px rgba(111, 140, 214, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(111, 140, 214, 0); }
+}
+@keyframes ProgressLegendPulseTl {
+  0%   { box-shadow: 0 0 0 0 rgba(76, 175, 133, 0.55); }
+  70%  { box-shadow: 0 0 0 8px rgba(76, 175, 133, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(76, 175, 133, 0); }
+}
+
+.ProgressLegend-dotPending {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: $lightGrey;
+}
+
+/* ----- Detail / sub-stages text ----- */
+
+.TopicProgress-detail {
+  font-size: 0.78rem;
+  color: $mediumGrey;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: -0.15rem;
+}
+
+.TopicProgress-subStages {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
+  gap: 0.35rem 0.6rem;
+  font-size: 0.7rem;
+  color: $mediumLightGrey;
 }
 
-.TopicAction-message {
-  font-size: 12px;
+.TopicProgress-subStage--complete {
+  color: #4caf85;
+}
+
+.TopicProgress-subStage--current {
   color: $mediumGrey;
+  font-weight: 600;
 }
 
-.TopicAction-count {
-  font-size: 12px;
+.TopicProgress-startButton {
+  align-self: flex-start;
+}
+
+.TopicProgress-editLink {
+  font-size: 0.85rem;
   color: $mediumGrey;
+  text-decoration: underline;
 }
 
-.TopicAction-percent {
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.TopicAction-progressBar {
-  position: relative;
-  height: 6px;
-  background: $lightGrey;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.TopicAction-progressBarFill {
-  height: 100%;
-  background: $blue;
-  width: 0%;
-  transition: width 0.25s ease-in-out;
-}
-
-.TopicAction-progress {
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.TopicActions-finePrint {
+.TopicProgress-finePrint {
   font-size: 0.75rem;
   color: $mediumLightGrey;
 }
 
-.TopicAction-currentCount {
-  margin-top: 0.5rem;
-  font-size: 0.75rem;
+.TopicOverflow {
+  position: relative;
+  margin-left: auto;
+}
+
+.TopicOverflow-trigger {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0.1rem 0.5rem;
+  cursor: pointer;
   color: $mediumGrey;
+
+  &:hover {
+    background: $lightGrey;
+  }
+}
+
+.TopicOverflow-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 0.25rem;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  min-width: 200px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem 0;
+}
+
+.TopicOverflow-item {
+  background: transparent;
+  border: 0;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: $mediumGrey;
+  text-decoration: none;
+  display: block;
+
+  &:hover {
+    background: $lightGrey;
+  }
+
+  &:disabled {
+    color: $mediumLightGrey;
+    cursor: not-allowed;
+  }
 }

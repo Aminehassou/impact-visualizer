@@ -147,6 +147,14 @@ class TopicService {
       });
   }
 
+  start_data_generation(id: number | string) {
+    return http
+      .post<Topic>(`/topics/${id}/start_data_generation`)
+      .then((response: AxiosResponse) => {
+        return _.get(response, "data");
+      });
+  }
+
   getArticleLanguageComparison(
     id: number | string,
     article: string,

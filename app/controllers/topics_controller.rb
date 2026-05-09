@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 class TopicsController < ApiController
-  before_action :authenticate_topic_editor!, only: [:create, :update, :destroy, :import_users,
-                                                    :import_articles, :generate_timepoints,
-                                                    :incremental_topic_build, :generate_article_analytics]
+  before_action :authenticate_topic_editor!,
+                only: %i[create update destroy import_users import_articles
+                         generate_timepoints incremental_topic_build
+                         generate_article_analytics start_data_generation]
 
   def index
     if current_editor && params[:owned]
@@ -134,6 +135,17 @@ class TopicsController < ApiController
     topic_service.incremental_topic_build(force_updates:)
     @topic = topic.reload
     render :show
+  end
+
+  def start_data_generation
+    topic = find_editable_topic
+    topic_service = TopicService.new(topic_editor: @topic_editor, topic:)
+    topic_service.start_data_generation
+    @topic = topic.reload
+    render :show
+  rescue ImpactVisualizerErrors::TopicNotReadyForDataGeneration
+    render json: { error: 'Topic has no articles to process. Add articles or attach a CSV first.' },
+           status: :unprocessable_entity
   end
 
   protected

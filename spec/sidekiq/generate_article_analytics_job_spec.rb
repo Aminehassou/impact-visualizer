@@ -25,10 +25,13 @@ RSpec.describe GenerateArticleAnalyticsJob, type: :job do
                        start_date: Date.new(2024, 1, 1), end_date: Date.new(2024, 12, 31))
       end
 
-      it 'does not auto-queue IncrementalTopicBuildJob' do
+      # Every topic now flows through the same auto-chained pipeline
+      # (articles → analytics → timepoint build); the tb_handle gate
+      # was removed when the unified data-generation UI shipped.
+      it 'queues IncrementalTopicBuildJob at the tail' do
         expect {
           described_class.new.perform(topic.id)
-        }.to change(IncrementalTopicBuildJob.jobs, :size).by(0)
+        }.to change(IncrementalTopicBuildJob.jobs, :size).by(1)
       end
     end
 
