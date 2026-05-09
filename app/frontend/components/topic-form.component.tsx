@@ -178,13 +178,16 @@ function TopicForm({ onSubmit, defaultValues, saving }) {
             label="Tokens per Word"
             type="text"
             rules={{
-              required: "A value is required",
               pattern: {
                 message: "Value must be numeric",
                 value: /^\d*\.?\d+$/,
               },
             }}
-            hint="The number of tokens will be divided by this value when displaying tokens as words."
+            hint={
+              defaultValues?.tokens_per_word_default
+                ? `Leave blank to use the language default (${defaultValues.tokens_per_word_default.toFixed(2)} for ${defaultValues?.wiki?.language ?? "this wiki"}). Otherwise, override with a custom divisor.`
+                : "Number of tokens to divide by when displaying as words. Leave blank to use the per-language default."
+            }
             control={control}
           />
         )}

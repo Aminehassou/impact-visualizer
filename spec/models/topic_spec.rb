@@ -487,6 +487,26 @@ RSpec.describe Topic do
       expect(topic.total_average_daily_visits).to eq(0)
     end
   end
+
+  describe '#tokens_per_word_effective' do
+    let(:wiki) { create(:wiki, language: 'en', project: 'wikipedia') }
+    let(:topic) { create(:topic, wiki:) }
+
+    it 'returns the per-topic override when set and positive' do
+      topic.update(tokens_per_word: 4.2)
+      expect(topic.tokens_per_word_effective).to eq(4.2)
+    end
+
+    it 'falls back to the wiki language default when override is nil' do
+      topic.update(tokens_per_word: nil)
+      expect(topic.tokens_per_word_effective).to eq(wiki.tokens_per_word_default)
+    end
+
+    it 'falls back to the wiki language default when override is zero' do
+      topic.update_column(:tokens_per_word, 0.0)
+      expect(topic.tokens_per_word_effective).to eq(wiki.tokens_per_word_default)
+    end
+  end
 end
 
 # == Schema Information
@@ -495,7 +515,7 @@ end
 #
 #  id                                :bigint           not null, primary key
 #  chart_time_unit                   :string           default("year")
-#  convert_tokens_to_words           :boolean          default(FALSE)
+#  convert_tokens_to_words           :boolean          default(TRUE)
 #  description                       :string
 #  display                           :boolean          default(FALSE)
 #  editor_label                      :string           default("participant")
@@ -505,7 +525,7 @@ end
 #  start_date                        :datetime
 #  tb_handle                         :string
 #  timepoint_day_interval            :integer          default(7)
-#  tokens_per_word                   :float            default(3.25)
+#  tokens_per_word                   :float
 #  created_at                        :datetime         not null
 #  updated_at                        :datetime         not null
 #  article_import_job_id             :string

@@ -65,3 +65,7 @@ node_modules
 # JS-specific files
 package-lock.json
 /config/credentials/wmcloud.key
+
+# words_per_token study venv (see scripts/words_per_token/README.md)
+/scripts/words_per_token/.venv
+/scripts/words_per_token/**/__pycache__

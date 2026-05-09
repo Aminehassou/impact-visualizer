@@ -44,11 +44,35 @@ class Wiki < ApplicationRecord
   validates_inclusion_of :project, in: PROJECTS
   validates_inclusion_of :language, in: LANGUAGES
 
+  # Fallback used when the wiki's language is not in the empirical
+  # study (rare; small/new wikis or non-Wikipedia projects). 3.0 is
+  # roughly the median of medians from the May 2026 study and lands
+  # within the bulk of measured languages' IQRs.
+  TOKENS_PER_WORD_GLOBAL_FALLBACK = 3.0
+
   ## Class methods
   def self.default_wiki
     wiki = find_or_create_by language: 'en', project: 'wikipedia'
     wiki.update wikidata_site: 'enwiki' if wiki.wikidata_site.nil?
     wiki
+  end
+
+  # Per-language median tokens_per_word from the empirical study at
+  # config/words_per_token.yml. See docs/words-per-token-methodology.md.
+  # Memoized at class level — the YAML is small and immutable at runtime.
+  def self.tokens_per_word_table
+    @tokens_per_word_table ||= begin
+      path = Rails.root.join('config', 'words_per_token.yml')
+      data = path.exist? ? YAML.safe_load_file(path) : {}
+      (data['languages'] || {}).transform_values do |entry|
+        entry['median_tokens_per_word']
+      end.compact
+    end
+  end
+
+  # Reset the memoized table — useful in specs.
+  def self.reset_tokens_per_word_table!
+    @tokens_per_word_table = nil
   end
 
   ## Instance methods
@@ -79,6 +103,15 @@ class Wiki < ApplicationRecord
 
   def name
     "#{project} (#{language})"
+  end
+
+  # Empirically-derived median tokens_per_word for this wiki's language,
+  # falling back to TOKENS_PER_WORD_GLOBAL_FALLBACK when the language
+  # isn't in the study. Used as the default divisor for converting
+  # WikiWho token counts into reader-facing word counts; topics may
+  # override via Topic#tokens_per_word.
+  def tokens_per_word_default
+    self.class.tokens_per_word_table[language] || TOKENS_PER_WORD_GLOBAL_FALLBACK
   end
 
 end

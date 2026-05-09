@@ -164,6 +164,12 @@ class TopicsController < ApiController
                                                :articles_csv, :slug, :timepoint_day_interval,
                                                :convert_tokens_to_words, :tokens_per_word)
 
+    # Empty string from a blank "Tokens per Word" input means "use the
+    # per-language default" — store as nil so Topic#tokens_per_word_effective
+    # falls back to Wiki#tokens_per_word_default. Without this, PG rejects
+    # the empty-string cast to float.
+    the_params[:tokens_per_word] = nil if the_params[:tokens_per_word].blank?
+
     # Working around Axios bug on front-end that leads to a hash instead of array
     unsafe = params[:topic].to_unsafe_h
     if unsafe[:classification_ids].is_a?(Array)

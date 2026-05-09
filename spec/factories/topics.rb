@@ -18,7 +18,7 @@ end
 #
 #  id                                :bigint           not null, primary key
 #  chart_time_unit                   :string           default("year")
-#  convert_tokens_to_words           :boolean          default(FALSE)
+#  convert_tokens_to_words           :boolean          default(TRUE)
 #  description                       :string
 #  display                           :boolean          default(FALSE)
 #  editor_label                      :string           default("participant")
@@ -28,7 +28,7 @@ end
 #  start_date                        :datetime
 #  tb_handle                         :string
 #  timepoint_day_interval            :integer          default(7)
-#  tokens_per_word                   :float            default(3.25)
+#  tokens_per_word                   :float
 #  created_at                        :datetime         not null
 #  updated_at                        :datetime         not null
 #  article_import_job_id             :string

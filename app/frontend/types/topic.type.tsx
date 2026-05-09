@@ -57,6 +57,8 @@ export default interface Topic {
   classifications: Array<Classification>;
   convert_tokens_to_words: boolean;
   tokens_per_word: number;
+  tokens_per_word_effective: number;
+  tokens_per_word_default: number | null;
   tb_handle: string | null;
   users_import_started_at: number | null;
   articles_import_started_at: number | null;

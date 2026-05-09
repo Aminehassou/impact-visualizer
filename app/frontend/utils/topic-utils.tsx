@@ -12,8 +12,8 @@ const TopicUtils = {
   },
 
   tokenOrWordCount(topic: Topic, count: number)   {
-    if (topic.convert_tokens_to_words && topic.tokens_per_word > 0) {
-      return Math.round(count / topic.tokens_per_word);
+    if (topic.convert_tokens_to_words && topic.tokens_per_word_effective > 0) {
+      return Math.round(count / topic.tokens_per_word_effective);
     };
     return count;
   },

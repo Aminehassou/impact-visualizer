@@ -11,6 +11,9 @@ json.extract! topic, :id, :name, :description, :end_date, :slug,
               :timepoints_count, :summaries_count, :tokens_per_word, :convert_tokens_to_words,
               :classification_ids, :tb_handle
 
+json.tokens_per_word_effective topic.tokens_per_word_effective
+json.tokens_per_word_default topic.wiki&.tokens_per_word_default
+
 if topic.wiki
   json.wiki do
     json.extract! topic.wiki, :id, :language, :project

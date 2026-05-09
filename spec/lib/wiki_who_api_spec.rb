@@ -45,6 +45,25 @@ describe WikiWhoApi do
     end
   end
 
+  describe 'AVAILABLE_WIKIPEDIAS' do
+    it 'includes the languages with empirical tokens_per_word data' do
+      # Sanity: the WikiWho language list and the words_per_token study
+      # should agree. If a language has data in config/words_per_token.yml
+      # but isn't in AVAILABLE_WIKIPEDIAS, the app will refuse to fetch
+      # tokens for it even though we have a default ratio.
+      Wiki.reset_tokens_per_word_table!
+      studied = Wiki.tokens_per_word_table.keys
+      missing = studied - described_class::AVAILABLE_WIKIPEDIAS
+      expect(missing).to eq([]),
+        "Languages with words_per_token data but not in WikiWhoApi: #{missing.inspect}"
+    end
+
+    it 'excludes Norwegian variants which 404 at the WikiWho API' do
+      expect(described_class::AVAILABLE_WIKIPEDIAS).not_to include('no')
+      expect(described_class::AVAILABLE_WIKIPEDIAS).not_to include('nb')
+    end
+  end
+
   describe '#get_revision_tokens' do
     let!(:wiki) { create(:wiki, project: 'wikipedia', language: 'en') }
     let(:subject) { described_class.new(wiki:) }

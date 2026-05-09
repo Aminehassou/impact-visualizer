@@ -71,6 +71,30 @@ RSpec.describe Wiki do
       expect(wiki.rest_api_url).to eq('https://en.wikipedia.org/w/rest.php/v1/')
     end
   end
+
+  describe '#tokens_per_word_default' do
+    before { described_class.reset_tokens_per_word_table! }
+    after  { described_class.reset_tokens_per_word_table! }
+
+    it 'returns the median from config/words_per_token.yml for a known language' do
+      wiki = described_class.find_or_create_by(language: 'en', project: 'wikipedia')
+      table = described_class.tokens_per_word_table
+      # If the file is present, the value should match its YAML entry; if
+      # not, the test still proves the fallback. Either way, the method
+      # must return a positive Float.
+      expect(wiki.tokens_per_word_default).to be_a(Float)
+      expect(wiki.tokens_per_word_default).to be > 0
+      expect(wiki.tokens_per_word_default).to eq(table['en']) if table['en']
+    end
+
+    it 'falls back to TOKENS_PER_WORD_GLOBAL_FALLBACK for languages not in the table' do
+      wiki = described_class.find_or_create_by(language: 'xx', project: 'wikipedia')
+      # 'xx' isn't a real Wikipedia language and won't be in the YAML
+      # study output. We bypass validation since 'xx' isn't in LANGUAGES.
+      wiki.save(validate: false)
+      expect(wiki.tokens_per_word_default).to eq(Wiki::TOKENS_PER_WORD_GLOBAL_FALLBACK)
+    end
+  end
 end
 
 # == Schema Information
