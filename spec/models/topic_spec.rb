@@ -439,6 +439,54 @@ RSpec.describe Topic do
       expect(topic.missing_articles_count).to eq(1)
     end
   end
+
+  # The bag-membership filtering on these read methods is the safety
+  # net for stale TopicArticleAnalytic rows. The TB sync service
+  # already deletes those rows for removed articles, but a bug there
+  # (or a different bag-mutating path) shouldn't leak ghost rows
+  # into the bubble chart or the "Total Average Daily Visits" stat.
+  describe '#article_analytics_data' do
+    let(:topic) { create(:topic) }
+    let(:bag) { ArticleBag.create!(topic:, name: 'Bag') }
+    let(:article_in_bag) { Article.create!(title: 'In', wiki: topic.wiki, pageid: 1) }
+    let(:article_removed) { Article.create!(title: 'Out', wiki: topic.wiki, pageid: 2) }
+
+    before do
+      ArticleBagArticle.create!(article_bag: bag, article: article_in_bag, centrality: 5)
+      TopicArticleAnalytic.create!(topic:, article: article_in_bag, average_daily_views: 100)
+      # A TopicArticleAnalytic that survived a bag mutation — article
+      # has no ArticleBagArticle in the active bag.
+      TopicArticleAnalytic.create!(topic:, article: article_removed, average_daily_views: 999)
+    end
+
+    it 'only returns rows for articles in the active bag' do
+      data = topic.article_analytics_data
+      expect(data.keys).to contain_exactly('In')
+      expect(data['Out']).to be_nil
+    end
+  end
+
+  describe '#total_average_daily_visits' do
+    let(:topic) { create(:topic) }
+    let(:bag) { ArticleBag.create!(topic:, name: 'Bag') }
+    let(:article_in_bag) { Article.create!(title: 'In', wiki: topic.wiki, pageid: 1) }
+    let(:article_removed) { Article.create!(title: 'Out', wiki: topic.wiki, pageid: 2) }
+
+    before do
+      ArticleBagArticle.create!(article_bag: bag, article: article_in_bag)
+      TopicArticleAnalytic.create!(topic:, article: article_in_bag, average_daily_views: 100)
+      TopicArticleAnalytic.create!(topic:, article: article_removed, average_daily_views: 999)
+    end
+
+    it 'sums only views for articles still in the active bag' do
+      expect(topic.total_average_daily_visits).to eq(100)
+    end
+
+    it 'returns 0 when the topic has no active bag' do
+      topic.article_bags.destroy_all
+      expect(topic.total_average_daily_visits).to eq(0)
+    end
+  end
 end
 
 # == Schema Information

@@ -51,7 +51,13 @@ if owned
 end
 
 if topic.most_recent_summary
-  json.extract! topic.most_recent_summary, :articles_count, :articles_count_delta,
+  # NB: :articles_count is intentionally NOT extracted from the summary —
+  # `topic.articles_count` (live, from the active bag) is already in the
+  # JSON above. The summary captures it at build time, so after a bag
+  # sync (add/remove articles) it would be stale until the next
+  # incremental build finishes. All the other fields here are summary-
+  # only deltas and stay snapshotted, which is the desired behavior.
+  json.extract! topic.most_recent_summary, :articles_count_delta,
                 :attributed_articles_created_delta, :attributed_length_delta,
                 :attributed_revisions_count_delta, :attributed_token_count,
                 :average_wp10_prediction, :wp10_prediction_categories,

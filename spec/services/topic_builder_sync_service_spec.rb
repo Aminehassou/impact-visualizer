@@ -194,4 +194,68 @@ describe TopicBuilderSyncService do
       expect(topic.reload.tb_handle).to eq('tbp_old')
     end
   end
+
+  # End-to-end check: a sync that adds and removes articles must
+  # update every read method the topic-detail page consumes —
+  # articles_count, total_average_daily_visits, article_analytics_data,
+  # missing_articles_count — without waiting for the regen pipeline
+  # to rebuild summaries. (Summary-derived stats like
+  # articles_count_delta are intentionally allowed to lag until
+  # incremental_topic_build runs.)
+  describe 'topic read methods after a sync that adds and removes articles' do
+    let(:article_c) { Article.create!(title: 'Bloom\'s taxonomy', wiki:, pageid: 3) }
+
+    before do
+      # Pre-existing summary captures the pre-sync snapshot (2 articles).
+      TopicSummary.create!(
+        topic:,
+        articles_count: 2, articles_count_delta: 1,
+        attributed_articles_created_delta: 1, attributed_length_delta: 100,
+        attributed_revisions_count_delta: 1, attributed_token_count: 5,
+        average_wp10_prediction: 50, length: 500, length_delta: 100,
+        revisions_count: 10, revisions_count_delta: 5,
+        token_count: 80, token_count_delta: 20, classifications: []
+      )
+
+      # Pre-existing analytics — both articles get pageviews, so
+      # article_analytics_exist? returns true.
+      TopicArticleAnalytic.create!(
+        topic:, article: article_a,
+        average_daily_views: 100, article_size: 1000
+      )
+      TopicArticleAnalytic.create!(
+        topic:, article: article_b,
+        average_daily_views: 80, article_size: 500
+      )
+
+      # Sync: keep article_a, remove article_b, add article_c.
+      package = package_with([
+        { 'title' => 'Achievement gap', 'centrality' => 8 },
+        { 'title' => 'Bloom\'s taxonomy', 'centrality' => 4 }
+      ])
+      described_class.new(topic:, package:).sync!
+      topic.reload
+    end
+
+    it 'updates articles_count to reflect the post-sync bag' do
+      expect(topic.articles_count).to eq(2)
+    end
+
+    it 'drops the removed article from total_average_daily_visits' do
+      # 100 (kept) only; the removed article's 80 must not contribute.
+      expect(topic.total_average_daily_visits).to eq(100)
+    end
+
+    it 'drops the removed article from article_analytics_data' do
+      data = topic.article_analytics_data
+      expect(data.keys).to contain_exactly('Achievement gap')
+    end
+
+    it 'leaves the most_recent_summary snapshot untouched' do
+      # Summary is intentionally only refreshed by incremental_topic_build;
+      # callers that need post-sync deltas must wait for that to complete.
+      expect(topic.most_recent_summary.articles_count).to eq(2)
+      expect(topic.most_recent_summary.articles_count_delta).to eq(1)
+    end
+  end
 end

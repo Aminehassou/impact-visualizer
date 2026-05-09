@@ -52,7 +52,7 @@ describe TopicsController do
           end_date: topic.end_date,
           slug: topic.slug,
           timepoint_day_interval: topic.timepoint_day_interval,
-          articles_count: topic_summary.articles_count,
+          articles_count: topic.articles_count,
           articles_count_delta: topic_summary.articles_count_delta
         )
       end
@@ -107,7 +107,7 @@ describe TopicsController do
         end_date: topic.end_date,
         slug: topic.slug,
         timepoint_day_interval: topic.timepoint_day_interval,
-        articles_count: topic_summary.articles_count,
+        articles_count: topic.articles_count,
         articles_count_delta: topic_summary.articles_count_delta
       )
     end

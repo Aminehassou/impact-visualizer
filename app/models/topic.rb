@@ -128,7 +128,14 @@ class Topic < ApplicationRecord
   end
 
   def total_average_daily_visits
-    topic_article_analytics.sum(:average_daily_views)
+    bag = active_article_bag
+    return 0 unless bag
+    # Restrict to articles still present in the active bag — without
+    # this, removed articles' analytics keep contributing to the total
+    # until incremental_topic_build runs and re-summarizes.
+    topic_article_analytics
+      .where(article_id: bag.article_bag_articles.select(:article_id))
+      .sum(:average_daily_views)
   end
 
   def most_recent_summary
@@ -136,9 +143,16 @@ class Topic < ApplicationRecord
   end
 
   def article_analytics_data
+    # INNER JOIN restricts the result to articles currently in the
+    # active bag. A LEFT JOIN here would leak rows for articles that
+    # were removed from the bag (e.g. by a TB sync) but whose
+    # TopicArticleAnalytic rows haven't been cleaned up yet, so the
+    # bubble chart would render points for articles no longer in the
+    # topic. The sync service does delete those rows today; this is
+    # the defensive companion to that cleanup.
     centrality_join = ActiveRecord::Base.sanitize_sql_array(
       [
-        'LEFT JOIN article_bag_articles ON article_bag_articles.article_id = topic_article_analytics.article_id AND article_bag_articles.article_bag_id = ?',
+        'INNER JOIN article_bag_articles ON article_bag_articles.article_id = topic_article_analytics.article_id AND article_bag_articles.article_bag_id = ?',
         active_article_bag&.id
       ]
     )
