@@ -14,13 +14,18 @@ class GenerateArticleAnalyticsJob
   # Retry-After + 0–3 s jitter still catches the occasional burst.
   THREADS_COUNT = 3
 
-  # If a TopicArticleAnalytic for (topic, article) was updated within this
-  # window, treat it as fresh and skip the ~16 Wikipedia API calls per
-  # article. Catches the common interrupt-restart case (e.g., a deploy
-  # killed an in-progress run): the new run resumes from where the old
-  # one left off instead of redoing already-fetched articles. Pass
-  # force=true to bypass and refresh everything.
-  RECENCY_WINDOW = 6.hours
+  # If a TopicArticleAnalytic for (topic, article) was updated within
+  # this window, treat it as fresh and skip the ~16 Wikipedia API
+  # calls per article. Covers two cases:
+  #   1. Interrupt-restart (a deploy killed an in-progress run) — the
+  #      new run resumes where the old one left off.
+  #   2. Bag re-sync — when TB sync adds/removes articles, the
+  #      surviving articles' analytics are still useful for impact
+  #      reporting (which is measured in months/years), so we'd
+  #      rather re-run timepoint build against existing analytics
+  #      than refetch ~16 API calls × thousands of articles.
+  # Pass force=true to bypass and refresh everything.
+  RECENCY_WINDOW = 7.days
 
   def perform(topic_id, force = false)
     @expiration = 60 * 60 * 24 * 7

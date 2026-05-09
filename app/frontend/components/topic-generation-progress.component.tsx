@@ -225,7 +225,33 @@ function buildTimepointsPhase(topic: Topic): Phase {
 }
 
 function buildPhases(topic: Topic): Phase[] {
-  return [buildImportPhase(topic), buildAnalyticsPhase(topic), buildTimepointsPhase(topic)];
+  const phases = [
+    buildImportPhase(topic),
+    buildAnalyticsPhase(topic),
+    buildTimepointsPhase(topic),
+  ];
+
+  // Re-generation correction: once a phase is running, every downstream
+  // phase whose only claim to "complete" is leftover data from a
+  // previous cycle (has_stats, has_analytics) should read as pending.
+  // Otherwise the chart fills past the active phase — e.g. while
+  // analytics is regenerating, timeline still has last cycle's stats
+  // and would otherwise show as 100% done.
+  let downstream = false;
+  return phases.map((p) => {
+    if (downstream && p.status === "complete") {
+      return {
+        ...p,
+        status: "pending" as const,
+        percent: null,
+        startedAt: null,
+        detail: null,
+        countLabel: null,
+      };
+    }
+    if (p.status === "running") downstream = true;
+    return p;
+  });
 }
 
 // Phase weights (matching PHASE_WEIGHTS) determine how much each phase
