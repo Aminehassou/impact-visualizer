@@ -258,4 +258,70 @@ describe TopicBuilderSyncService do
       expect(topic.most_recent_summary.articles_count_delta).to eq(1)
     end
   end
+
+  # The Revisions / Tokens / WP10 tabs and the per-timepoint charts on
+  # the Articles tab are all driven by TopicTimepoint stats, which are
+  # aggregated from `topic_timepoint.topic_article_timepoints`. Those
+  # TATs are deleted by the sync service for removed articles, so the
+  # next aggregation run should reflect only the surviving bag. This
+  # test runs the aggregation directly on a post-sync state to lock
+  # that in — without it, a regression in the sync service's TAT
+  # cleanup could silently leave Revisions/Tokens charts showing
+  # stale numbers after the regen pipeline finishes.
+  describe 'TopicTimepoint stats aggregation after a sync that removes an article' do
+    # Must be one of topic.timestamps (start_date + N × interval), or
+    # TopicTimepointStatsService → topic.timestamp_previous_to raises.
+    let(:timestamp) { topic.timestamps[1] }
+    let(:topic_timepoint) { TopicTimepoint.create!(topic:, timestamp:) }
+    let(:at_a) do
+      ArticleTimepoint.create!(
+        article: article_a, timestamp:,
+        article_length: 1000, revisions_count: 12, token_count: 200
+      )
+    end
+    let(:at_b) do
+      ArticleTimepoint.create!(
+        article: article_b, timestamp:,
+        article_length: 500, revisions_count: 8, token_count: 80
+      )
+    end
+
+    before do
+      TopicArticleTimepoint.create!(
+        topic_timepoint:, article_timepoint: at_a,
+        length_delta: 100, revisions_count_delta: 4, token_count_delta: 50
+      )
+      TopicArticleTimepoint.create!(
+        topic_timepoint:, article_timepoint: at_b,
+        length_delta: 80, revisions_count_delta: 3, token_count_delta: 20
+      )
+
+      package = package_with([
+        { 'title' => 'Achievement gap', 'centrality' => 8 }
+      ])
+      described_class.new(topic:, package:).sync!
+
+      TopicTimepointStatsService.new
+        .update_stats_for_topic_timepoint(topic_timepoint: topic_timepoint.reload)
+    end
+
+    it 'aggregates only the surviving article into TopicTimepoint stats' do
+      tp = topic_timepoint.reload
+      expect(tp.articles_count).to eq(1)            # was 2 pre-sync
+      expect(tp.length).to eq(1000)                 # only article_a
+      expect(tp.revisions_count).to eq(12)
+      expect(tp.token_count).to eq(200)
+      expect(tp.length_delta).to eq(100)            # only article_a's TAT delta
+      expect(tp.revisions_count_delta).to eq(4)
+      expect(tp.token_count_delta).to eq(50)
+    end
+
+    it 'preserves the removed article\'s ArticleTimepoint (article-scoped, may be shared)' do
+      # The TopicArticleTimepoint join row was deleted by sync, but
+      # the underlying ArticleTimepoint remains in case another topic
+      # references it.
+      expect(ArticleTimepoint.exists?(at_b.id)).to be true
+      expect(TopicArticleTimepoint.exists?(topic_timepoint:, article_timepoint: at_b)).to be false
+    end
+  end
 end
