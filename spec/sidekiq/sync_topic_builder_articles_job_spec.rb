@@ -63,6 +63,56 @@ RSpec.describe SyncTopicBuilderArticlesJob, type: :job do
     }.to change(GenerateArticleAnalyticsJob.jobs, :size).by(1)
   end
 
+  context 'when the diff is removes-only' do
+    # Drop article_b from the bag without adding anything.
+    let(:package) do
+      {
+        'handle' => handle,
+        'schema_version' => 1,
+        'source_topic_id' => source_topic_id,
+        'config' => { 'name' => topic.name, 'wiki' => 'en' },
+        'articles' => [
+          { 'title' => 'Achievement gap', 'centrality' => 8 }
+        ]
+      }
+    end
+
+    it 'skips analytics and jumps to the topic_timepoints stage' do
+      expect {
+        described_class.new.perform(topic.id, handle)
+      }.to change(IncrementalTopicBuildJob.jobs, :size).by(1)
+        .and change(GenerateArticleAnalyticsJob.jobs, :size).by(0)
+
+      args = IncrementalTopicBuildJob.jobs.last['args']
+      # [topic_id, stage, queue_next_stage, force_updates]
+      expect(args[1]).to eq('topic_timepoints')
+      expect(args[2]).to eq(false)
+      expect(args[3]).to eq(false)
+    end
+  end
+
+  context 'when the diff is centrality-only' do
+    let(:package) do
+      {
+        'handle' => handle,
+        'schema_version' => 1,
+        'source_topic_id' => source_topic_id,
+        'config' => { 'name' => topic.name, 'wiki' => 'en' },
+        'articles' => [
+          { 'title' => 'Achievement gap', 'centrality' => 3 },
+          { 'title' => 'Active learning', 'centrality' => 7 }
+        ]
+      }
+    end
+
+    it 'queues no follow-up jobs' do
+      expect {
+        described_class.new.perform(topic.id, handle)
+      }.to change(GenerateArticleAnalyticsJob.jobs, :size).by(0)
+        .and change(IncrementalTopicBuildJob.jobs, :size).by(0)
+    end
+  end
+
   it 'clears article_import_job_id when all retries are exhausted' do
     topic.update(article_import_job_id: 'fake-jid')
     described_class.sidekiq_retries_exhausted_block.call(

@@ -460,5 +460,64 @@ describe TimepointService do
       expect(topic_article_call_count).to eq(article_timepoint_count)
       expect(article_call_count).to eq(article_timepoint_count)
     end
+
+    context 'with the revision-id gate' do
+      # Latest revision_id used by the end_article_timepoint_* records.
+      let(:latest_revision_id) { 1084581512 }
+      let(:fetch_count) { Concurrent::AtomicFixnum.new(0) }
+
+      before do
+        # Existing TopicArticleAnalytic rows would normally be created by
+        # GenerateArticleAnalyticsJob. The token-skip gate uses these per-
+        # (topic, article) rows to record which revision_id was processed.
+        [article_1, article_2, article_3].each do |article|
+          TopicArticleAnalytic.create!(topic:, article:, average_daily_views: 0)
+        end
+
+        # Count WikiWho fetches via a thread-safe counter; `update_token_stats`
+        # runs articles in parallel and `expect_any_instance_of(...).to receive`
+        # is not race-safe under that.
+        allow_any_instance_of(WikiWhoApi).to receive(:get_revision_tokens) do
+          fetch_count.increment
+          []
+        end
+      end
+
+      it 'skips the WikiWho fetch when tokens_revision_id is current' do
+        TopicArticleAnalytic.where(topic:).update_all(tokens_revision_id: latest_revision_id)
+
+        described_class.new(topic:).update_token_stats
+
+        expect(fetch_count.value).to eq(0)
+      end
+
+      it 'fetches and records the marker when tokens_revision_id is nil' do
+        described_class.new(topic:).update_token_stats
+
+        expect(fetch_count.value).to eq(article_bag.articles.count)
+        expect(
+          TopicArticleAnalytic.where(topic:).pluck(:tokens_revision_id)
+        ).to all(eq(latest_revision_id))
+      end
+
+      it 're-fetches and re-records when the latest revision has changed' do
+        TopicArticleAnalytic.where(topic:).update_all(tokens_revision_id: 1)
+
+        described_class.new(topic:).update_token_stats
+
+        expect(fetch_count.value).to eq(article_bag.articles.count)
+        expect(
+          TopicArticleAnalytic.where(topic:).pluck(:tokens_revision_id)
+        ).to all(eq(latest_revision_id))
+      end
+
+      it 'bypasses the gate when force_updates is true' do
+        TopicArticleAnalytic.where(topic:).update_all(tokens_revision_id: latest_revision_id)
+
+        described_class.new(topic:, force_updates: true).update_token_stats
+
+        expect(fetch_count.value).to eq(article_bag.articles.count)
+      end
+    end
   end
 end

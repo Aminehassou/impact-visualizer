@@ -229,6 +229,19 @@ class TimepointService
     # Bail if no revision_id
     return unless latest_revision_id
 
+    # Skip the WikiWho fetch + per-timestamp DB writes when the article's
+    # latest revision hasn't changed since the last token run for this
+    # (topic, article). The marker is per-TopicArticleAnalytic so that
+    # articles shared across topics are tracked independently, and so
+    # attributed_token_count (which depends on topic.users) stays in
+    # sync per-topic. force_updates=true bypasses the gate.
+    topic_article_analytic = TopicArticleAnalytic.find_by(topic: @topic, article:)
+    if !@force_updates &&
+       topic_article_analytic&.tokens_revision_id == latest_revision_id
+      log "  #update_token_stats_for_article SKIP (tokens up-to-date) article_id:#{article.id}"
+      return
+    end
+
     # Fetch all tokens for the most recent revision of article
     tokens = WikiWhoApi.new(wiki: @topic.wiki).get_revision_tokens(latest_revision_id)
 
@@ -236,6 +249,8 @@ class TimepointService
       # For each timestamp, update the article's token stats
       update_token_stats_for_article_timestamp(article:, timestamp:, tokens:)
     end
+
+    topic_article_analytic&.update!(tokens_revision_id: latest_revision_id)
   end
 
   def update_token_stats_for_article_timestamp(article:, timestamp:, tokens:)

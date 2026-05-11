@@ -18,6 +18,7 @@ class SyncTopicBuilderArticlesJob
 
   EXPIRATION_SECONDS = 60 * 60 * 24 * 30
 
+  # rubocop:disable Metrics/AbcSize
   def perform(topic_id, handle)
     @expiration = EXPIRATION_SECONDS
     store(started_at: Time.now.to_i)
@@ -37,7 +38,26 @@ class SyncTopicBuilderArticlesJob
     at(diff_count, 'Sync applied')
 
     topic.reload.update(article_import_job_id: nil)
-    topic.queue_generate_article_analytics
+    chain_next_phase(topic, diff)
+  end
+  # rubocop:enable Metrics/AbcSize
+
+  # When the diff has no adds, the surviving articles' analytics, article
+  # timepoints, and tokens are still valid — only the TopicTimepoint
+  # aggregates need recomputing because removed articles' contributions
+  # are gone. Skip the analytics fetch and the first three build stages
+  # and jump straight to topic_timepoints. Pure centrality changes don't
+  # affect any aggregate, so no rebuild is queued.
+  def chain_next_phase(topic, diff)
+    if diff.adds.any?
+      topic.queue_generate_article_analytics
+    elsif diff.removes.any?
+      topic.queue_incremental_topic_build(
+        stage: :topic_timepoints,
+        queue_next_stage: false,
+        force_updates: false
+      )
+    end
   end
 
   def expiration

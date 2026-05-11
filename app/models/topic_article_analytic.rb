@@ -43,6 +43,7 @@ end
 #  created_at                :datetime         not null
 #  updated_at                :datetime         not null
 #  article_id                :bigint           not null
+#  tokens_revision_id        :integer
 #  topic_id                  :bigint           not null
 #
 # Indexes
