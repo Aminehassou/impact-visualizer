@@ -3,7 +3,15 @@
 class VisualizerToolsApi
   include ApiErrorHandling
 
-  AVAILABLE_WIKIPEDIAS = %w[en de es eu fa fr gl it nl pt ru sv tr uk].freeze
+  # Wikipedias for which the impact_visualizer_tools backend serves
+  # revision-count lookups. Kept in sync with WikiWhoApi::AVAILABLE_WIKIPEDIAS
+  # so any wiki we can pull token attribution for can also be data-generated;
+  # if the backend doesn't recognize a wiki, get_page_edits_count returns nil
+  # and the caller falls back to revisions_count: 0 rather than crashing.
+  AVAILABLE_WIKIPEDIAS = %w[
+    ar ce cs de dsb en es eu fa fi fr gl hi hu id it ja nl pl pt
+    ru sr sv tr uk vi zh
+  ].freeze
 
   def initialize(wiki)
     @wiki = wiki
