@@ -10,13 +10,17 @@
 # Sync only touches the article bag + centrality; config fields stay
 # frozen at the original-import values.
 #
-# v1 is admin-only on POST (matches the rest of IV's import surface area,
-# which lives behind ActiveAdmin). The GET preview is also admin-only for
-# v1; broaden in lockstep when POST opens up to authenticated editors.
+# Open to any signed-in user (TopicEditor or AdminUser). A topic created
+# from a TB package is associated with the importing TopicEditor via
+# TopicBuilderImportService, which lets them manage it later; admin imports
+# stay unassociated (admins can manage any topic).
+#
+# Sync (re-publish) is further gated by Editor#can_edit_topic? so only the
+# original importer (or an admin) can re-sync an existing topic.
 class ImportsController < ApplicationController
   PREVIEW_ARTICLE_LIMIT = 10
 
-  before_action :authenticate_admin_user!
+  before_action :authenticate_any_signed_in!
   before_action :set_handle
 
   layout false
@@ -69,7 +73,7 @@ class ImportsController < ApplicationController
   private
 
   def apply_create(package)
-    importer = TopicBuilderImportService.new(package:, topic_editor: current_admin_user)
+    importer = TopicBuilderImportService.new(package:, topic_editor: current_editor)
     topic = importer.import!
 
     # Pre-generate the jid and write it to the topic BEFORE enqueueing,
@@ -85,6 +89,12 @@ class ImportsController < ApplicationController
   end
 
   def apply_sync(topic)
+    unless current_editor.can_edit_topic?(topic)
+      redirect_to "/topics/#{topic.id}",
+                  alert: "You don't have permission to sync '#{topic.name}'."
+      return
+    end
+
     jid = SecureRandom.hex(12)
     topic.update!(article_import_job_id: jid)
     SyncTopicBuilderArticlesJob.set(jid:).perform_async(topic.id, @handle)
@@ -101,5 +111,16 @@ class ImportsController < ApplicationController
 
   def set_handle
     @handle = params[:handle].to_s
+  end
+
+  def authenticate_any_signed_in!
+    return if topic_editor_signed_in? || admin_user_signed_in?
+    # TopicEditor doesn't have a password-based session, only MediaWiki OAuth.
+    redirect_to topic_editor_mediawiki_omniauth_authorize_path,
+                alert: 'Please sign in to import a Topic Builder package.'
+  end
+
+  def current_editor
+    current_topic_editor || current_admin_user
   end
 end

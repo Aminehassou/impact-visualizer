@@ -29,12 +29,28 @@ describe ImportsController do
     }
   end
   let!(:admin) { create(:admin_user, email: 'admin@example.com', password: 'password123') }
+  let!(:topic_editor) { create(:topic_editor, username: 'wiki_editor') }
 
   describe 'GET /imports/:handle' do
     context 'when not signed in' do
-      it 'redirects to admin sign-in' do
+      it 'redirects to topic-editor sign-in' do
         get "/imports/#{handle}"
-        expect(response).to redirect_to(new_admin_user_session_path)
+        expect(response).to redirect_to(topic_editor_mediawiki_omniauth_authorize_path)
+      end
+    end
+
+    context 'when signed in as a topic editor' do
+      before { sign_in topic_editor }
+
+      it 'renders the preview' do
+        stub_request(:get, url).to_return(
+          status: 200, body: package.to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
+        get "/imports/#{handle}"
+        expect(response.status).to eq(200)
+        expect(response.body).to include('Educational Psychology')
+        expect(response.body).to include('Import topic')
       end
     end
 
@@ -80,9 +96,30 @@ describe ImportsController do
 
   describe 'POST /imports/:handle' do
     context 'when not signed in' do
-      it 'redirects to admin sign-in' do
+      it 'redirects to topic-editor sign-in' do
         post "/imports/#{handle}"
-        expect(response).to redirect_to(new_admin_user_session_path)
+        expect(response).to redirect_to(topic_editor_mediawiki_omniauth_authorize_path)
+      end
+    end
+
+    context 'when signed in as a topic editor' do
+      before { sign_in topic_editor }
+
+      it 'creates the topic, associates it with the editor, and enqueues ingestion' do
+        stub_request(:get, url).to_return(
+          status: 200, body: package.to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
+
+        expect {
+          post "/imports/#{handle}"
+        }.to change(Topic, :count).by(1)
+          .and change(ImportTopicBuilderArticlesJob.jobs, :size).by(1)
+
+        topic = Topic.last
+        expect(topic.tb_handle).to eq(handle)
+        expect(topic_editor.reload.topics).to include(topic)
+        expect(response).to redirect_to("/topics/#{topic.id}")
       end
     end
 
@@ -149,11 +186,12 @@ describe ImportsController do
     end
 
     before do
-      sign_in admin
       create(:article_bag_article, article_bag: bag, article:, centrality: 8)
     end
 
     describe 'GET /imports/:handle' do
+      before { sign_in admin }
+
       it 'renders the sync preview when source_topic_id matches an existing topic' do
         stub_request(:get, url).to_return(
           status: 200, body: sync_package.to_json,
@@ -190,6 +228,8 @@ describe ImportsController do
     end
 
     describe 'POST /imports/:handle' do
+      before { sign_in admin }
+
       it 'enqueues SyncTopicBuilderArticlesJob and redirects to the existing topic' do
         stub_request(:get, url).to_return(
           status: 200, body: sync_package.to_json,
@@ -207,6 +247,23 @@ describe ImportsController do
         enqueued = SyncTopicBuilderArticlesJob.jobs.last
         expect(enqueued['args']).to eq([existing_topic.id, handle])
         expect(enqueued['jid']).to eq(existing_topic.reload.article_import_job_id)
+      end
+    end
+
+    describe 'POST /imports/:handle — non-owner topic editor' do
+      it 'denies sync and redirects with an alert' do
+        sign_in topic_editor
+        stub_request(:get, url).to_return(
+          status: 200, body: sync_package.to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
+
+        expect {
+          post "/imports/#{handle}"
+        }.to change(SyncTopicBuilderArticlesJob.jobs, :size).by(0)
+
+        expect(response).to redirect_to("/topics/#{existing_topic.id}")
+        expect(flash[:alert]).to include("don't have permission")
       end
     end
   end
