@@ -629,10 +629,11 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
 
     const isLargeDataset = currentSortedRows.length > LARGE_DATASET_THRESHOLD;
 
+    const useHighlight = !isLargeDataset;
+
     const makeOpacityEncoding = (activeOpacity: number) =>
-      isLargeDataset
-        ? { value: activeOpacity }
-        : {
+      useHighlight
+        ? {
             condition: [
               { param: "highlight", empty: false, value: activeOpacity },
               {
@@ -641,7 +642,8 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
               },
             ],
             value: 0.06,
-          };
+          }
+        : { value: activeOpacity };
 
     const spec: VisualizationSpec = {
       $schema: "https://vega.github.io/schema/vega-lite/v5.json",
@@ -677,7 +679,6 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
         { name: "centrality_min", value: centralityMin },
         { name: "centrality_max", value: centralityMax },
         { name: "include_no_centrality", value: includeNoCentrality },
-        { name: "show_labels", value: showLabels },
         {
           name: "y_domain_min",
           value:
@@ -701,15 +702,19 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
             opacity: 0,
           },
           params: [
-            {
-              name: "highlight",
-              select: {
-                type: "point",
-                fields: ["article"],
-                on: { type: "pointerover", throttle: 50 } as any,
-                clear: "pointerout",
-              },
-            },
+            ...(useHighlight
+              ? [
+                  {
+                    name: "highlight",
+                    select: {
+                      type: "point" as const,
+                      fields: ["article"],
+                      on: { type: "pointerover", throttle: 50 } as any,
+                      clear: "pointerout",
+                    },
+                  },
+                ]
+              : []),
             {
               name: "grid",
               select: { type: "interval", zoom: true, encodings: ["x"] },
@@ -869,48 +874,28 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
               scale: { type: "sqrt", range: [20, 600] },
             },
             opacity: makeOpacityEncoding(0.5),
-
-            ...(isLargeDataset
-              ? {
-                  stroke: {
-                    condition: {
-                      param: "highlight",
-                      empty: false,
-                      value: "#ff6600",
-                    },
-                    value: "white",
-                  },
-                  strokeWidth: {
-                    condition: {
-                      param: "highlight",
-                      empty: false,
-                      value: 3,
-                    },
-                    value: 1,
-                  },
-                }
-              : {}),
           },
         },
-        {
-          mark: {
-            type: "text",
-            align: "center",
-            baseline: "bottom",
-            dy: -10,
-            angle: 0,
-            fontSize: 9,
-            limit: 120,
-            clip: true,
-          },
-          encoding: {
-            text: { field: "article", type: "nominal" as const },
-            opacity: {
-              condition: [{ test: "show_labels", value: 1 }],
-              value: 0,
-            },
-          },
-        },
+        ...(showLabels
+          ? [
+              {
+                mark: {
+                  type: "text" as const,
+                  align: "center" as const,
+                  baseline: "bottom" as const,
+                  dy: -10,
+                  angle: 0,
+                  fontSize: 9,
+                  limit: 120,
+                  clip: true,
+                },
+                encoding: {
+                  text: { field: "article", type: "nominal" as const },
+                  opacity: { value: 1 },
+                },
+              },
+            ]
+          : []),
       ],
 
       encoding: {
@@ -970,6 +955,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
     hasData,
     isLargeDatasetBucket,
     actions,
+    showLabels,
     xAxisKey,
     xAxisMode,
     yAxisConfig,
@@ -1080,11 +1066,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
   };
 
   const handleShowLabelsChange = (checked: boolean) => {
-    if (viewRef.current) {
-      viewRef.current.view.signal("show_labels", checked);
-      viewRef.current.view.runAsync();
-    }
-    startTransition(() => setShowLabels(checked));
+    setShowLabels(checked);
   };
 
   const handleSearchChange = (term: string) => {
