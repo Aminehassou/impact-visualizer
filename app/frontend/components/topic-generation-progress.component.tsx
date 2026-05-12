@@ -446,6 +446,7 @@ function OverflowMenu({
 function TopicGenerationProgress({ topic }: { topic: Topic }) {
   const queryClient = useQueryClient();
   const nowMs = useNow(1000);
+  const canEdit = !!topic.owned;
 
   const startMutation = useMutation<Topic, unknown, void>({
     mutationFn: () => TopicService.start_data_generation(topic.id),
@@ -484,7 +485,7 @@ function TopicGenerationProgress({ topic }: { topic: Topic }) {
         {state === "running" && currentEta != null && (
           <span className="TopicProgress-eta">{formatEta(currentEta)} left</span>
         )}
-        {state !== "idle" && (
+        {canEdit && state !== "idle" && (
           <OverflowMenu
             topic={topic}
             onRestart={() => startMutation.mutate()}
@@ -518,7 +519,7 @@ function TopicGenerationProgress({ topic }: { topic: Topic }) {
         </div>
       )}
 
-      {state === "idle" && canStart && (
+      {canEdit && state === "idle" && canStart && (
         <button
           type="button"
           className="Button TopicProgress-startButton"
@@ -529,22 +530,24 @@ function TopicGenerationProgress({ topic }: { topic: Topic }) {
         </button>
       )}
 
-      {state === "idle" && !canStart && (
+      {canEdit && state === "idle" && !canStart && (
         <div className="TopicProgress-finePrint">
           {cannotStartReason ||
             "Add articles to this topic before generating data."}
         </div>
       )}
 
-      {state === "idle" && (
+      {canEdit && state === "idle" && (
         <Link to={`/my-topics/edit/${topic.id}`} className="TopicProgress-editLink">
           Edit topic
         </Link>
       )}
 
-      <div className="TopicProgress-finePrint">
-        Generation runs in the background. You can navigate away.
-      </div>
+      {canEdit && (
+        <div className="TopicProgress-finePrint">
+          Generation runs in the background. You can navigate away.
+        </div>
+      )}
     </div>
   );
 }

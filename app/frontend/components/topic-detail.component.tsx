@@ -60,7 +60,11 @@ function renderIntro({ topic, editorLabel }) {
         )}
       </div>
 
-      {topic.owned && <TopicGenerationProgress topic={topic} />}
+      {(topic.owned ||
+        topic.data_generation_state === "running" ||
+        topic.data_generation_state === "complete") && (
+        <TopicGenerationProgress topic={topic} />
+      )}
     </div>
   );
 }
@@ -185,8 +189,13 @@ function TopicDetail() {
     queryKey: ["topic", id],
     queryFn: ({ queryKey }) => TopicService.getTopic(queryKey[1]),
     refetchInterval: (query) => {
+      // Poll while a build is in flight so every viewer sees progress;
+      // owners also poll in idle so newly-kicked-off generation shows up
+      // without a manual refresh.
       const owned = _.get(query, "state.data.owned", false);
-      return owned ? 5000 : false;
+      const state = _.get(query, "state.data.data_generation_state");
+      if (owned || state === "running") return 5000;
+      return false;
     },
   });
 
