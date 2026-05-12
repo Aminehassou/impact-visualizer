@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2026_05_11_000000) do
+ActiveRecord::Schema[7.0].define(version: 2026_05_12_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -153,6 +153,7 @@ ActiveRecord::Schema[7.0].define(version: 2026_05_11_000000) do
     t.jsonb "article_protections", default: [], null: false
     t.integer "incoming_links_count", default: 0, null: false
     t.integer "tokens_revision_id"
+    t.boolean "tokens_unavailable", default: false, null: false
     t.index ["topic_id", "article_id"], name: "index_topic_article_analytics_on_topic_id_and_article_id", unique: true
   end
 

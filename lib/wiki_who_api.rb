@@ -82,12 +82,14 @@ class WikiWhoApi
     # Don't retry if missing revision
     if status != 400 && status != 408
       tries += 1
-      unless Rails.env.test?
-        sleep_time = 3**tries
-        puts "WikiWhoApi / Error – Retrying after #{sleep_time} seconds (#{tries}/#{total_tries}) "
-        sleep sleep_time
+      if tries < total_tries
+        unless Rails.env.test?
+          sleep_time = 3**tries
+          puts "WikiWhoApi / Error – Retrying after #{sleep_time} seconds (#{tries}/#{total_tries}) "
+          sleep sleep_time
+        end
+        retry
       end
-      retry unless tries == total_tries
     end
 
     log_error(e, response, false)

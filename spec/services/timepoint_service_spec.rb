@@ -519,5 +519,67 @@ describe TimepointService do
         expect(fetch_count.value).to eq(article_bag.articles.count)
       end
     end
+
+    context 'with the tokens_unavailable filter' do
+      let(:fetch_count) { Concurrent::AtomicFixnum.new(0) }
+
+      before do
+        [article_1, article_2, article_3].each do |article|
+          TopicArticleAnalytic.create!(topic:, article:, average_daily_views: 0)
+        end
+
+        allow_any_instance_of(WikiWhoApi).to receive(:get_revision_tokens) do
+          fetch_count.increment
+          []
+        end
+      end
+
+      it 'marks tokens_unavailable=true and skips the per-timestamp loop ' \
+         'when WikiWho returns nil' do
+        allow_any_instance_of(WikiWhoApi).to receive(:get_revision_tokens) do
+          fetch_count.increment
+          nil
+        end
+        expect_any_instance_of(ArticleStatsService).not_to receive(:update_token_stats)
+
+        described_class.new(topic:).update_token_stats
+
+        expect(fetch_count.value).to eq(article_bag.articles.count)
+        expect(
+          TopicArticleAnalytic.where(topic:).pluck(:tokens_unavailable).uniq
+        ).to eq([true])
+      end
+
+      it 'filters previously-flagged articles out of the parallel loop' do
+        TopicArticleAnalytic.where(topic: topic, article: article_1)
+                            .update_all(tokens_unavailable: true)
+
+        described_class.new(topic:).update_token_stats
+
+        # WikiWho is hit for the remaining articles only.
+        expect(fetch_count.value).to eq(article_bag.articles.count - 1)
+      end
+
+      it 'bypasses the tokens_unavailable filter when force_updates is true' do
+        TopicArticleAnalytic.where(topic:).update_all(tokens_unavailable: true)
+
+        described_class.new(topic:, force_updates: true).update_token_stats
+
+        expect(fetch_count.value).to eq(article_bag.articles.count)
+      end
+
+      it 'clears tokens_unavailable on a subsequent successful fetch' do
+        TopicArticleAnalytic.where(topic: topic, article: article_1)
+                            .update_all(tokens_unavailable: true)
+
+        # force_updates lets the previously-flagged article through and
+        # WikiWho now returns a real (non-nil) result.
+        described_class.new(topic:, force_updates: true).update_token_stats
+
+        expect(
+          TopicArticleAnalytic.where(topic:).pluck(:tokens_unavailable).uniq
+        ).to eq([false])
+      end
+    end
   end
 end

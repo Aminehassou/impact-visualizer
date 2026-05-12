@@ -39,6 +39,7 @@ end
 #  prev_talk_size            :integer
 #  publication_date          :date
 #  talk_size                 :integer
+#  tokens_unavailable        :boolean          default(FALSE), not null
 #  warning_tags_count        :integer          default(0), not null
 #  created_at                :datetime         not null
 #  updated_at                :datetime         not null

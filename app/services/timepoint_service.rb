@@ -193,21 +193,19 @@ class TimepointService
   end
 
   def update_token_stats
-    article_bag_articles = @topic.active_article_bag.article_bag_articles
+    article_bag_articles = article_bag_articles_for_tokens
+    total = article_bag_articles.count
 
     article_count = 0
-
-    # Loop through all Articles
-    # article_bag_articles.each do |article_bag_article|
 
     Parallel.each(article_bag_articles, in_threads: THREADS_COUNT) do |article_bag_article|
       ActiveRecord::Base.connection_pool.with_connection do
         article = article_bag_article.article
         article_count += 1
         increment_progress_count
-        log "  #update_token_stats_for_article article:#{article_count}/#{article_bag_articles.count} article_id: #{article.id}"
+        log "  #update_token_stats_for_article article:#{article_count}/#{total} article_id: #{article.id}"
         if (article_count % 50).zero?
-          notify("Updating token stats #{article_count}/#{article_bag_articles.count}…")
+          notify("Updating token stats #{article_count}/#{total}…")
         end
 
         # Update stats for all timestamps for article
@@ -216,6 +214,24 @@ class TimepointService
         ActiveRecord::Base.connection_pool.release_connection
       end
     end
+  end
+
+  # Articles eligible for stage 3 (tokens). Excludes articles previously
+  # flagged tokens_unavailable — e.g., WikiWho rejects non-article
+  # namespaces (Mall:, Template:, etc.) with HTTP 400, and once that's
+  # known there's no point re-hitting it across the full per-timestamp
+  # loop. force_updates bypasses the filter so a retry can clear stale
+  # markers.
+  def article_bag_articles_for_tokens
+    scope = @topic.active_article_bag&.article_bag_articles
+    return scope if scope.nil? || @force_updates
+
+    unavailable_ids = TopicArticleAnalytic
+                      .where(topic: @topic, tokens_unavailable: true)
+                      .pluck(:article_id)
+    return scope if unavailable_ids.empty?
+
+    scope.where.not(article_id: unavailable_ids)
   end
 
   def update_token_stats_for_article(article:)
@@ -245,12 +261,29 @@ class TimepointService
     # Fetch all tokens for the most recent revision of article
     tokens = WikiWhoApi.new(wiki: @topic.wiki).get_revision_tokens(latest_revision_id)
 
+    # If WikiWho can't analyze this article (e.g., the title is in a non-
+    # article namespace, which returns 400), mark it and bail. Otherwise
+    # the per-timestamp loop below would re-enter WikiWho once per
+    # timestamp via ArticleTokenService.count_*_within_range, which on
+    # topics with 200+ timestamps turns one unanalyzable article into
+    # hundreds of doomed requests.
+    if tokens.nil?
+      topic_article_analytic&.update!(
+        tokens_revision_id: latest_revision_id,
+        tokens_unavailable: true
+      )
+      return
+    end
+
     @topic.timestamps.each do |timestamp|
       # For each timestamp, update the article's token stats
       update_token_stats_for_article_timestamp(article:, timestamp:, tokens:)
     end
 
-    topic_article_analytic&.update!(tokens_revision_id: latest_revision_id)
+    topic_article_analytic&.update!(
+      tokens_revision_id: latest_revision_id,
+      tokens_unavailable: false
+    )
   end
 
   def update_token_stats_for_article_timestamp(article:, timestamp:, tokens:)
@@ -298,8 +331,11 @@ class TimepointService
     end
 
     if stage.nil? || stage == :tokens
-      # Add Article count for update_token_stats loop
-      total_progress_steps += article_count
+      # Add Article count for update_token_stats loop. Use the filtered
+      # set so ETA reflects only the articles we'll actually process.
+      # (For stage.nil? — full builds — the marker scope hasn't been
+      # populated yet so this equals article_count.)
+      total_progress_steps += article_bag_articles_for_tokens&.count.to_i
     end
 
     if stage.nil? || stage == :topic_timepoints
