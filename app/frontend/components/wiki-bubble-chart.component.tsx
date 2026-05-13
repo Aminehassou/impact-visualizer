@@ -1419,6 +1419,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
           languages={TARGET_LANGUAGES}
           onArticleClick={setLangCompareArticle}
           progress={langLinksProgress}
+          topicId={topicId}
         />
 
         <div className="ArticleLangDisclaimer">

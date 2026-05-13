@@ -7,9 +7,10 @@ const BUBBLE_HALF = BUBBLE_BOX / 2;
 type BubbleCellProps = {
   row: BubbleSizeFields;
   scales: RadiusScales;
+  isLoading?: boolean;
 };
 
-const BubbleCell: React.FC<BubbleCellProps> = ({ row, scales }) => {
+const BubbleCell: React.FC<BubbleCellProps> = ({ row, scales, isLoading }) => {
   return (
     <td className="ArticleLangCell ArticleLangCell--present">
       <svg
@@ -19,6 +20,9 @@ const BubbleCell: React.FC<BubbleCellProps> = ({ row, scales }) => {
         viewBox={`-${BUBBLE_HALF} -${BUBBLE_HALF} ${BUBBLE_BOX} ${BUBBLE_BOX}`}
         role="img"
         aria-label="Available"
+        style={
+          isLoading ? { opacity: 0.35, transition: "opacity 0.3s ease" } : undefined
+        }
       >
         <circle
           r={scales.talk(row.talk_size)}
@@ -46,6 +50,7 @@ const BubbleCell: React.FC<BubbleCellProps> = ({ row, scales }) => {
           strokeWidth={1}
         />
       </svg>
+      {isLoading && <span className="ArticleLangCellLoadingDot" />}
     </td>
   );
 };

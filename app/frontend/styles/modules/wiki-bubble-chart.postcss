@@ -1330,6 +1330,22 @@
   vertical-align: middle;
 }
 
+.ArticleLangCellLoadingDot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  background: #1976d2;
+  border-radius: 50%;
+  animation: articleLangCellPulse 1s ease-in-out infinite;
+}
+
+@keyframes articleLangCellPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.6); }
+}
+
 .ArticleLangCellMissing {
   display: flex;
   align-items: center;
