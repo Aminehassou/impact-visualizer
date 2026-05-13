@@ -28,17 +28,14 @@ function StatDetail({ topicTimepoints, fields, stat, type, topic }: Props) {
   const [categories, setCategories] = useState<string[]>([]);
   const [spec, setSpec] = useState({});
 
-  if (topicTimepoints.length === 0) {
-    return null;
-  }
-
   const updateSpec = useCallback(async () => {
+    if (topicTimepoints.length === 0) return;
     setLoading(true);
-    const { values, yLabel, min, max, categories, title } = 
+    const { values, yLabel, min, max, categories, title } =
       await ChartUtils.prepChartSpecs({ topicTimepoints, stat, totalField, topic,
                                   classificationView, deltaField,
                                   attributedDeltaField, type })
-    
+
     const spec = ChartSpec.prepare({
       values, yLabel, min, max, stat, classificationView,
       categories, type, timeUnit: topic.chart_time_unit, topic
@@ -57,6 +54,10 @@ function StatDetail({ topicTimepoints, fields, stat, type, topic }: Props) {
   useEffect(() => {
     setClassificationView('default');
   }, [stat, topic, type]);
+
+  if (topicTimepoints.length === 0) {
+    return null;
+  }
 
   return (
     <div
