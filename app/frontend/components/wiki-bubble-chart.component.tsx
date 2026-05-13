@@ -361,7 +361,8 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
       return fetchLanguageLinks(topicId!, articles, setLangLinksProgress);
     },
     enabled: activeTab === "languages" && !!topicId && sortedRows.length > 0,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 4 * 60 * 60 * 1000,
+    gcTime: 4 * 60 * 60 * 1000,
   });
 
   const articleTitles = useMemo(() => {

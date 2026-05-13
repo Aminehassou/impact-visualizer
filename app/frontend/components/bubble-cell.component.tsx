@@ -8,9 +8,17 @@ type BubbleCellProps = {
   row: BubbleSizeFields;
   scales: RadiusScales;
   isLoading?: boolean;
+  isQueued?: boolean;
 };
 
-const BubbleCell: React.FC<BubbleCellProps> = ({ row, scales, isLoading }) => {
+const BubbleCell: React.FC<BubbleCellProps> = ({
+  row,
+  scales,
+  isLoading,
+  isQueued,
+}) => {
+  const svgOpacity = isLoading ? 0.35 : isQueued ? 0.5 : 1;
+
   return (
     <td className="ArticleLangCell ArticleLangCell--present">
       <svg
@@ -21,7 +29,9 @@ const BubbleCell: React.FC<BubbleCellProps> = ({ row, scales, isLoading }) => {
         role="img"
         aria-label="Available"
         style={
-          isLoading ? { opacity: 0.35, transition: "opacity 0.3s ease" } : undefined
+          svgOpacity < 1
+            ? { opacity: svgOpacity, transition: "opacity 0.3s ease" }
+            : undefined
         }
       >
         <circle
@@ -51,6 +61,7 @@ const BubbleCell: React.FC<BubbleCellProps> = ({ row, scales, isLoading }) => {
         />
       </svg>
       {isLoading && <span className="ArticleLangCellLoadingDot" />}
+      {isQueued && <span className="ArticleLangCellQueuedDot" />}
     </td>
   );
 };

@@ -53,6 +53,7 @@ function LanguageCell({
   scales,
   langData,
   isLoading,
+  isQueued,
 }: {
   articleTitle: string;
   lang: string;
@@ -62,6 +63,7 @@ function LanguageCell({
   scales: RadiusScales;
   langData?: LangComparisonData | null;
   isLoading?: boolean;
+  isQueued?: boolean;
 }) {
   if (!exists) {
     return (
@@ -102,6 +104,7 @@ function LanguageCell({
       row={displayRow}
       scales={scales}
       isLoading={!isSourceLang && isLoading}
+      isQueued={!isSourceLang && isQueued}
     />
   );
 }
@@ -324,8 +327,14 @@ const ArticleLanguagesGrid: React.FC<ArticleLanguagesGridProps> = ({
           {currentPageData.map((row, rowIdx) => {
             const langs = languageLinks.get(row.article) ?? new Set<string>();
             const articleLangData = langDataByArticle.get(row.article);
+            const inFetchPhase = !!topicId && !loading;
             const rowIsLoading =
-              !!topicId && langQueries[rowIdx]?.isLoading === true;
+              inFetchPhase && langQueries[rowIdx]?.isLoading === true;
+            const rowIsQueued =
+              inFetchPhase &&
+              !rowIsLoading &&
+              !langQueries[rowIdx]?.isSuccess &&
+              !langQueries[rowIdx]?.isError;
 
             return (
               <tr key={row.article} className="ArticleLangRow">
@@ -346,6 +355,7 @@ const ArticleLanguagesGrid: React.FC<ArticleLanguagesGridProps> = ({
                     scales={radiusScales}
                     langData={articleLangData?.[lang]}
                     isLoading={rowIsLoading && langs.has(lang)}
+                    isQueued={rowIsQueued && langs.has(lang)}
                   />
                 ))}
               </tr>
