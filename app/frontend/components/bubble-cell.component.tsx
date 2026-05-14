@@ -17,7 +17,28 @@ const BubbleCell: React.FC<BubbleCellProps> = ({
   isLoading,
   isQueued,
 }) => {
-  const svgOpacity = isLoading ? 0.35 : isQueued ? 0.5 : 1;
+  if (isLoading || isQueued) {
+    return (
+      <td className="ArticleLangCell ArticleLangCell--present">
+        <svg
+          className={`ArticleLangCellSkeleton ArticleLangCellSkeleton--${isLoading ? "loading" : "queued"}`}
+          width={BUBBLE_BOX}
+          height={BUBBLE_BOX}
+          viewBox={`-${BUBBLE_HALF} -${BUBBLE_HALF} ${BUBBLE_BOX} ${BUBBLE_BOX}`}
+          aria-hidden="true"
+        >
+          <circle
+            r={16}
+            fill="none"
+            stroke={isLoading ? "#90caf9" : "#e0e0e0"}
+            strokeWidth={3}
+            strokeDasharray={isLoading ? "25 75" : "4 4"}
+            strokeLinecap="round"
+          />
+        </svg>
+      </td>
+    );
+  }
 
   return (
     <td className="ArticleLangCell ArticleLangCell--present">
@@ -28,11 +49,6 @@ const BubbleCell: React.FC<BubbleCellProps> = ({
         viewBox={`-${BUBBLE_HALF} -${BUBBLE_HALF} ${BUBBLE_BOX} ${BUBBLE_BOX}`}
         role="img"
         aria-label="Available"
-        style={
-          svgOpacity < 1
-            ? { opacity: svgOpacity, transition: "opacity 0.3s ease" }
-            : undefined
-        }
       >
         <circle
           r={scales.talk(row.talk_size)}
@@ -60,8 +76,6 @@ const BubbleCell: React.FC<BubbleCellProps> = ({
           strokeWidth={1}
         />
       </svg>
-      {isLoading && <span className="ArticleLangCellLoadingDot" />}
-      {isQueued && <span className="ArticleLangCellQueuedDot" />}
     </td>
   );
 };

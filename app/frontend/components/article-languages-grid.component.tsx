@@ -220,8 +220,8 @@ const ArticleLanguagesGrid: React.FC<ArticleLanguagesGridProps> = ({
   const langQueries = useQueries({
     queries: currentPageData.map((row, i) => ({
       queryKey: ["langComparison", topicId, row.article],
-      queryFn: () =>
-        TopicService.getArticleLanguageComparison(topicId!, row.article),
+      queryFn: ({ signal }) =>
+        TopicService.getArticleLanguageComparison(topicId!, row.article, signal),
       enabled: !!topicId && !loading && i <= unlockedIdx,
       staleTime: LANG_DATA_STALE_MS,
       gcTime: LANG_DATA_STALE_MS,
