@@ -1093,6 +1093,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
         <h2 className="u-mb0">Article analytics over chosen focus period</h2>
         <CSVButton
           articles={sortedRows}
+          filteredArticles={filteredArticles}
           csvConvert={convertAnalyticsToCSV}
           filename="article-analytics"
         />
