@@ -41,7 +41,7 @@ type ArticleLanguagesGridProps = {
 };
 
 const ITEMS_PER_PAGE = 10;
-const LANG_FETCH_CONCURRENCY = 3;
+const LANG_FETCH_CONCURRENCY = 5;
 const LANG_DATA_STALE_MS = 4 * 60 * 60 * 1000;
 
 function LanguageCell({
