@@ -344,9 +344,20 @@ class ArticleStatsService
   end
 
   def article_comparison(article_title)
-    langlinks = @wiki_action_api.get_langlinks_with_titles(title: article_title)
+    langlinks = begin
+      @wiki_action_api.get_langlinks_with_titles(title: article_title)
+    rescue StandardError => e
+      raise FetchError, "Failed to fetch language links: #{e.message}"
+    end
+
     title_by_lang = resolve_titles_by_language(article_title, langlinks)
-    fetch_comparison_stats(title_by_lang)
+    stats, errors = fetch_comparison_stats(title_by_lang)
+
+    if errors.any?
+      raise FetchError, 'Failed to fetch language comparison data from Wikipedia. Please try again later.'
+    end
+
+    stats
   end
 
   def self.best_assessment_class_from_pageassessments(assessments)
@@ -468,6 +479,7 @@ class ArticleStatsService
 
   def fetch_comparison_stats(title_by_lang)
     result = {}
+    errors = []
     semaphore = Mutex.new
 
     threads = LANGUAGE_LINK_TARGETS.map do |lang|
@@ -478,13 +490,18 @@ class ArticleStatsService
           next
         end
 
-        stats = fetch_single_language_stats(l, foreign_title)
-        semaphore.synchronize { result[l] = stats }
+        begin
+          stats = fetch_single_language_stats(l, foreign_title)
+          semaphore.synchronize { result[l] = stats }
+        rescue StandardError => e
+          Rails.logger.error("[article_language_comparison] Error fetching stats for #{l}: #{e.class} - #{e.message}")
+          semaphore.synchronize { errors << e }
+        end
       end
     end
 
     threads.each(&:join)
-    result
+    [result, errors]
   end
 
   def fetch_single_language_stats(lang, foreign_title)
@@ -528,8 +545,5 @@ class ArticleStatsService
       revisions_count:,
       linguistic_versions_count: lang_count + 1
     }
-  rescue StandardError => e
-    Rails.logger.error("[article_language_comparison] Error fetching stats for #{lang}: #{e.class} - #{e.message}")
-    nil
   end
 end

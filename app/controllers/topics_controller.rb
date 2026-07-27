@@ -127,6 +127,8 @@ class TopicsController < ApiController
     service = ArticleStatsService.new(topic.wiki)
     result = service.article_comparison(article_title)
     render json: result
+  rescue ArticleStatsService::RateLimitError, ArticleStatsService::FetchError => e
+    render json: { error: e.message }, status: :service_unavailable
   end
 
   def incremental_topic_build
