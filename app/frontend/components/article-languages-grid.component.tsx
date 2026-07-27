@@ -121,7 +121,16 @@ function PaginationBar({
   totalPages: number;
   goToPage: (page: number) => void;
 }) {
+  const [pageInput, setPageInput] = useState("");
+
   if (totalPages <= 1) return null;
+
+  const handleJump = (e: React.FormEvent) => {
+    e.preventDefault();
+    const target = Number(pageInput);
+    if (Number.isInteger(target) && target >= 1) goToPage(target);
+    setPageInput("");
+  };
 
   const pages: (number | "ellipsis")[] = [];
   const maxVisible = 10;
@@ -172,6 +181,20 @@ function PaginationBar({
       >
         &rsaquo;
       </button>
+      <form className="Jump" onSubmit={handleJump}>
+        <input
+          type="text"
+          inputMode="numeric"
+          className="JumpInput"
+          value={pageInput}
+          onChange={(e) => setPageInput(e.target.value.replace(/\D/g, ""))}
+          placeholder="#"
+          aria-label={`Go to page (1-${totalPages})`}
+        />
+        <button type="submit" className="Btn" disabled={pageInput === ""}>
+          Go
+        </button>
+      </form>
     </div>
   );
 }
@@ -204,7 +227,11 @@ const ArticleLanguagesGrid: React.FC<ArticleLanguagesGridProps> = ({
   const radiusScales = useMemo<RadiusScales>(() => {
     const areaToRadius = (area: number) => Math.sqrt(area / Math.PI);
     const build = (
-      field: "talk_size" | "prev_article_size" | "lead_section_size" | "article_size",
+      field:
+        | "talk_size"
+        | "prev_article_size"
+        | "lead_section_size"
+        | "article_size",
       range: [number, number],
     ): RadiusScale => {
       const values = scaleSource.map((a) => a[field] ?? 0);
