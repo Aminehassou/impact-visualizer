@@ -77,7 +77,12 @@ const ChartToolbar: React.FC<ChartToolbarProps> = ({
         )}
         <span>{linkCopied ? "Copied" : "Copy link"}</span>
       </button>
-      <button type="button" className="GlossaryBtn" onClick={onOpenLegend}>
+      <button
+        type="button"
+        data-tour="legend"
+        className="GlossaryBtn"
+        onClick={onOpenLegend}
+      >
         <MdLegendToggle size={14} />
         <span>Legend</span>
       </button>

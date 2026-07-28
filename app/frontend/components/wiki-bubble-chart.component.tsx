@@ -46,7 +46,10 @@ import {
   formatProtectionSummary,
   xAxisTitleForKey,
 } from "../utils/bubble-chart-utils";
-import { MAX_CIRCLE_RADIUS, patchChartScales } from "../utils/bubble-chart-vega";
+import {
+  MAX_CIRCLE_RADIUS,
+  patchChartScales,
+} from "../utils/bubble-chart-vega";
 import TopicService from "../services/topic.service";
 import { fetchLanguageLinks, TARGET_LANGUAGES } from "../utils/language-links";
 import type { LangLinksProgress } from "../utils/language-links";
@@ -85,53 +88,70 @@ const TOUR_STEPS: Step[] = [
   {
     target: ".WikiBubbleChart",
     placement: "center",
-    title: "Welcome",
-    content:
-      "This chart visualizes the articles in this topic and how they compare. Here's a quick tour of the main features.",
+    title: "Welcome to Wikipedia Panorama",
+    content: "A visual way to explore Wikipedia articles",
+    locale: { skip: "No, thanks" },
   },
   {
-    target: ".WikiBubbleChart .TabBar",
-    title: "Overview & Languages",
+    target: ".WikiBubbleChart",
+    placement: "center",
     content:
-      "Switch between the Overview chart and the Languages coverage view.",
-  },
-  {
-    target: ".WikiBubbleChart .TabPanel:not([hidden]) .AxisControls",
-    title: "Axes & sizing",
-    content:
-      "Choose what the axes and bubble sizes represent, and how the articles are sorted.",
-  },
-  {
-    target: ".WikiBubbleChart .TabPanel:not([hidden]) .AdvancedFilters",
-    title: "Advanced filters",
-    content:
-      "Narrow the articles by tags, centrality, protection level and quality assessment.",
-  },
-  {
-    target: ".WikiBubbleChart .HeadingControls",
-    title: "Labels, color & search",
-    content:
-      "Toggle labels, switch to a single color, or jump straight to a specific article.",
+      "Wikipedia Panorama allows you to have a general overview of articles on a specific topic.",
   },
   {
     target: ".WikiBubbleChart .Container",
-    title: "The bubble chart",
-    content: "Each bubble is an article. Click any bubble to see its details.",
+    placement: "top",
+    content:
+      "Each bubble represents an article on the topic. The bubble size changes depending on different article metrics. Click any bubble to open that article's details.",
   },
   {
+    target: '.WikiBubbleChart [data-tour="legend"]',
+    placement: "bottom",
+    content: (
+      <img
+        className="TourLegendImage"
+        src="/images/legend.png"
+        alt="Chart legend"
+      />
+    ),
+  },
+  {
+    target:
+      '.WikiBubbleChart .TabPanel:not([hidden]) [data-tour="vertical-axis"]',
+    placement: "bottom",
+    content: "You can rearrange the data along the vertical axis.",
+  },
+  {
+    target:
+      '.WikiBubbleChart .TabPanel:not([hidden]) [data-tour="horizontal-axis"]',
+    placement: "bottom",
+    content: "And you can rearrange the data along the horizontal axis.",
+  },
+  {
+    id: "sidebar",
     target: ".WikiBubbleChart .FilteredArticlesSidebar",
-    title: "Filtered articles",
+    placement: "left",
     content:
-      "See the articles matching your filters, flag outliers, or add new articles.",
+      "The sidebar lists the filtered articles. It allows you to trim outliers, inspect details, or remove articles from the chart.",
   },
   {
     target: '.WikiBubbleChart [data-tour="languages-tab"]',
     placement: "bottom",
-    title: "Language coverage",
     content:
-      "Switch to the Languages tab to compare how each article is covered across different language editions of Wikipedia.",
+      "You can also compare articles in different linguistic versions and at different points in time.",
+  },
+  {
+    target: ".WikiBubbleChart",
+    placement: "center",
+    content:
+      "Explore the articles, see how Wikipedia changes over time, and contribute to sharing your knowledge!",
+    locale: { last: "Finish tour" },
   },
 ];
+
+const SIDEBAR_STEP_INDEX = TOUR_STEPS.findIndex(
+  (step) => step.id === "sidebar",
+);
 
 export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
   data = {},
@@ -1316,9 +1336,8 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
       toast.success(`Added "${title}" to this topic`);
     },
     onError: (error) => {
-      const message = (
-        error as { response?: { data?: { error?: string } } }
-      ).response?.data?.error;
+      const message = (error as { response?: { data?: { error?: string } } })
+        .response?.data?.error;
       toast.error(message ?? "Failed to add article");
     },
   });
@@ -1459,12 +1478,6 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
   const { run, stepIndex, setStepIndex, startTour, endTour } =
     useOnboardingTour({ hasData });
 
-  const applyStepSideEffects = (index: number) => {
-    setActiveTab("overview");
-    if (index === 3) setAdvancedOpen(true);
-    if (index === 6) setSidebarOpen(true);
-  };
-
   const handleJoyrideEvent = (data: EventData) => {
     const { action, index, status, type } = data;
 
@@ -1479,7 +1492,8 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
 
     if (type === EVENTS.STEP_AFTER || type === EVENTS.TARGET_NOT_FOUND) {
       const nextIndex = index + (action === ACTIONS.PREV ? -1 : 1);
-      applyStepSideEffects(nextIndex);
+      setActiveTab("overview");
+      if (nextIndex === SIDEBAR_STEP_INDEX) setSidebarOpen(true);
       setStepIndex(nextIndex);
     }
   };
