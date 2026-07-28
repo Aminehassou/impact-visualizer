@@ -7,6 +7,14 @@ import React, {
   useDeferredValue,
 } from "react";
 import vegaEmbed, { VisualizationSpec, EmbedOptions, Result } from "vega-embed";
+import {
+  Joyride,
+  ACTIONS,
+  EVENTS,
+  STATUS,
+  type EventData,
+  type Step,
+} from "react-joyride";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -43,6 +51,7 @@ import TopicService from "../services/topic.service";
 import { fetchLanguageLinks, TARGET_LANGUAGES } from "../utils/language-links";
 import type { LangLinksProgress } from "../utils/language-links";
 import { exportChartImage } from "../utils/chart-image-export";
+import { useOnboardingTour } from "../hooks/useOnboardingTour";
 import {
   decodeChartState,
   encodeChartState,
@@ -71,6 +80,58 @@ interface WikiBubbleChartProps {
 
 const HEIGHT = 650;
 const LARGE_DATASET_THRESHOLD = 10000;
+
+const TOUR_STEPS: Step[] = [
+  {
+    target: ".WikiBubbleChart",
+    placement: "center",
+    title: "Welcome",
+    content:
+      "This chart visualizes the articles in this topic and how they compare. Here's a quick tour of the main features.",
+  },
+  {
+    target: ".WikiBubbleChart .TabBar",
+    title: "Overview & Languages",
+    content:
+      "Switch between the Overview chart and the Languages coverage view.",
+  },
+  {
+    target: ".WikiBubbleChart .TabPanel:not([hidden]) .AxisControls",
+    title: "Axes & sizing",
+    content:
+      "Choose what the axes and bubble sizes represent, and how the articles are sorted.",
+  },
+  {
+    target: ".WikiBubbleChart .TabPanel:not([hidden]) .AdvancedFilters",
+    title: "Advanced filters",
+    content:
+      "Narrow the articles by tags, centrality, protection level and quality assessment.",
+  },
+  {
+    target: ".WikiBubbleChart .HeadingControls",
+    title: "Labels, color & search",
+    content:
+      "Toggle labels, switch to a single color, or jump straight to a specific article.",
+  },
+  {
+    target: ".WikiBubbleChart .Container",
+    title: "The bubble chart",
+    content: "Each bubble is an article. Click any bubble to see its details.",
+  },
+  {
+    target: ".WikiBubbleChart .FilteredArticlesSidebar",
+    title: "Filtered articles",
+    content:
+      "See the articles matching your filters, flag outliers, or add new articles.",
+  },
+  {
+    target: '.WikiBubbleChart [data-tour="languages-tab"]',
+    placement: "bottom",
+    title: "Language coverage",
+    content:
+      "Switch to the Languages tab to compare how each article is covered across different language editions of Wikipedia.",
+  },
+];
 
 export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
   data = {},
@@ -1395,8 +1456,72 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
     }
   };
 
+  const { run, stepIndex, setStepIndex, startTour, endTour } =
+    useOnboardingTour({ hasData });
+
+  const applyStepSideEffects = (index: number) => {
+    setActiveTab("overview");
+    if (index === 3) setAdvancedOpen(true);
+    if (index === 6) setSidebarOpen(true);
+  };
+
+  const handleJoyrideEvent = (data: EventData) => {
+    const { action, index, status, type } = data;
+
+    if (
+      action === ACTIONS.CLOSE ||
+      status === STATUS.FINISHED ||
+      status === STATUS.SKIPPED
+    ) {
+      endTour();
+      return;
+    }
+
+    if (type === EVENTS.STEP_AFTER || type === EVENTS.TARGET_NOT_FOUND) {
+      const nextIndex = index + (action === ACTIONS.PREV ? -1 : 1);
+      applyStepSideEffects(nextIndex);
+      setStepIndex(nextIndex);
+    }
+  };
+
+  const handleStartTour = () => {
+    setActiveTab("overview");
+    setAdvancedOpen(false);
+    startTour();
+  };
+
   return (
     <div className="WikiBubbleChart">
+      <Joyride
+        steps={TOUR_STEPS}
+        run={run}
+        stepIndex={stepIndex}
+        onEvent={handleJoyrideEvent}
+        continuous
+        scrollToFirstStep
+        options={{
+          primaryColor: "#1976d2",
+          textColor: "#424242",
+          backgroundColor: "#ffffff",
+          arrowColor: "#ffffff",
+          overlayColor: "#00000080",
+          zIndex: 10000,
+          width: 360,
+          showProgress: true,
+          skipBeacon: true,
+          overlayClickAction: false,
+          buttons: ["back", "skip", "primary"],
+        }}
+        styles={{
+          tooltip: {
+            borderRadius: 6,
+            padding: 16,
+            boxShadow: "none",
+            border: "1px solid #e0e0e0",
+          },
+          floater: { filter: "none" },
+        }}
+      />
       <ChartToolbar
         articles={sortedRows}
         filteredArticles={filteredArticles}
@@ -1406,6 +1531,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
         onCopyLink={handleCopyLink}
         onOpenLegend={() => setLegendOpen(true)}
         onOpenGlossary={() => setGlossaryOpen(true)}
+        onStartTour={handleStartTour}
       />
 
       <ChartTabBar

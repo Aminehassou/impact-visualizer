@@ -1,5 +1,11 @@
 import React from "react";
-import { BsBook, BsImage, BsLink45Deg, BsCheck2 } from "react-icons/bs";
+import {
+  BsBook,
+  BsImage,
+  BsLink45Deg,
+  BsCheck2,
+  BsQuestionCircle,
+} from "react-icons/bs";
 import { MdLegendToggle } from "react-icons/md";
 import CSVButton from "./CSV-button.component";
 import WikitextButton from "./wikitext-button.component";
@@ -19,6 +25,7 @@ export interface ChartToolbarProps {
   onCopyLink: () => void;
   onOpenLegend: () => void;
   onOpenGlossary: () => void;
+  onStartTour: () => void;
 }
 
 const ChartToolbar: React.FC<ChartToolbarProps> = ({
@@ -30,6 +37,7 @@ const ChartToolbar: React.FC<ChartToolbarProps> = ({
   onCopyLink,
   onOpenLegend,
   onOpenGlossary,
+  onStartTour,
 }) => {
   return (
     <div className="TitleRow">
@@ -76,6 +84,10 @@ const ChartToolbar: React.FC<ChartToolbarProps> = ({
       <button type="button" className="GlossaryBtn" onClick={onOpenGlossary}>
         <BsBook size={14} />
         <span>Glossary</span>
+      </button>
+      <button type="button" className="GlossaryBtn" onClick={onStartTour}>
+        <BsQuestionCircle size={14} />
+        <span>Take the tour</span>
       </button>
     </div>
   );
