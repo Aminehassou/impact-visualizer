@@ -25,6 +25,7 @@ const ChartTabBar: React.FC<ChartTabBarProps> = ({
       </button>
       <button
         type="button"
+        data-tour="languages-tab"
         className={`Tab ${activeTab === "languages" ? "is-active" : ""}`}
         onClick={() => onTabChange("languages")}
       >

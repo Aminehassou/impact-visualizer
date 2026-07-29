@@ -7,6 +7,14 @@ import React, {
   useDeferredValue,
 } from "react";
 import vegaEmbed, { VisualizationSpec, EmbedOptions, Result } from "vega-embed";
+import {
+  Joyride,
+  ACTIONS,
+  EVENTS,
+  STATUS,
+  type EventData,
+  type Step,
+} from "react-joyride";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -38,11 +46,15 @@ import {
   formatProtectionSummary,
   xAxisTitleForKey,
 } from "../utils/bubble-chart-utils";
-import { MAX_CIRCLE_RADIUS, patchChartScales } from "../utils/bubble-chart-vega";
+import {
+  MAX_CIRCLE_RADIUS,
+  patchChartScales,
+} from "../utils/bubble-chart-vega";
 import TopicService from "../services/topic.service";
 import { fetchLanguageLinks, TARGET_LANGUAGES } from "../utils/language-links";
 import type { LangLinksProgress } from "../utils/language-links";
 import { exportChartImage } from "../utils/chart-image-export";
+import { useOnboardingTour } from "../hooks/useOnboardingTour";
 import {
   decodeChartState,
   encodeChartState,
@@ -71,6 +83,75 @@ interface WikiBubbleChartProps {
 
 const HEIGHT = 650;
 const LARGE_DATASET_THRESHOLD = 10000;
+
+const TOUR_STEPS: Step[] = [
+  {
+    target: ".WikiBubbleChart",
+    placement: "center",
+    title: "Welcome to Wikipedia Panorama",
+    content: "A visual way to explore Wikipedia articles",
+    locale: { skip: "No, thanks" },
+  },
+  {
+    target: ".WikiBubbleChart",
+    placement: "center",
+    content:
+      "Wikipedia Panorama allows you to have a general overview of articles on a specific topic.",
+  },
+  {
+    target: ".WikiBubbleChart .Container",
+    placement: "top",
+    content:
+      "Each bubble represents an article on the topic. The bubble size changes depending on different article metrics. Click any bubble to open that article's details.",
+  },
+  {
+    target: '.WikiBubbleChart [data-tour="legend"]',
+    placement: "bottom",
+    content: (
+      <img
+        className="TourLegendImage"
+        src="/images/legend.png"
+        alt="Chart legend"
+      />
+    ),
+  },
+  {
+    target:
+      '.WikiBubbleChart .TabPanel:not([hidden]) [data-tour="vertical-axis"]',
+    placement: "bottom",
+    content: "You can rearrange the data along the vertical axis.",
+  },
+  {
+    target:
+      '.WikiBubbleChart .TabPanel:not([hidden]) [data-tour="horizontal-axis"]',
+    placement: "bottom",
+    content: "And you can rearrange the data along the horizontal axis.",
+  },
+  {
+    id: "sidebar",
+    target: ".WikiBubbleChart .FilteredArticlesSidebar",
+    placement: "left",
+    content:
+      "The sidebar lists the filtered articles. It allows you to trim outliers, inspect details, or remove articles from the chart.",
+  },
+  {
+    target: '.WikiBubbleChart [data-tour="languages-tab"]',
+    placement: "bottom",
+    content:
+      "You can also compare articles in different linguistic versions and at different points in time.",
+  },
+  {
+    target: ".WikiBubbleChart",
+    placement: "center",
+    content:
+      "Explore the articles, see how Wikipedia changes over time, and contribute to sharing your knowledge!",
+    locale: { last: "Finish tour" },
+  },
+];
+
+const SIDEBAR_STEP_INDEX = TOUR_STEPS.findIndex(
+  (step) => step.id === "sidebar",
+);
 
 export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
   data = {},
@@ -1255,9 +1336,8 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
       toast.success(`Added "${title}" to this topic`);
     },
     onError: (error) => {
-      const message = (
-        error as { response?: { data?: { error?: string } } }
-      ).response?.data?.error;
+      const message = (error as { response?: { data?: { error?: string } } })
+        .response?.data?.error;
       toast.error(message ?? "Failed to add article");
     },
   });
@@ -1395,8 +1475,67 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
     }
   };
 
+  const { run, stepIndex, setStepIndex, startTour, endTour } =
+    useOnboardingTour({ hasData });
+
+  const handleJoyrideEvent = (data: EventData) => {
+    const { action, index, status, type } = data;
+
+    if (
+      action === ACTIONS.CLOSE ||
+      status === STATUS.FINISHED ||
+      status === STATUS.SKIPPED
+    ) {
+      endTour();
+      return;
+    }
+
+    if (type === EVENTS.STEP_AFTER || type === EVENTS.TARGET_NOT_FOUND) {
+      const nextIndex = index + (action === ACTIONS.PREV ? -1 : 1);
+      setActiveTab("overview");
+      if (nextIndex === SIDEBAR_STEP_INDEX) setSidebarOpen(true);
+      setStepIndex(nextIndex);
+    }
+  };
+
+  const handleStartTour = () => {
+    setActiveTab("overview");
+    setAdvancedOpen(false);
+    startTour();
+  };
+
   return (
     <div className="WikiBubbleChart">
+      <Joyride
+        steps={TOUR_STEPS}
+        run={run}
+        stepIndex={stepIndex}
+        onEvent={handleJoyrideEvent}
+        continuous
+        scrollToFirstStep
+        options={{
+          primaryColor: "#1976d2",
+          textColor: "#424242",
+          backgroundColor: "#ffffff",
+          arrowColor: "#ffffff",
+          overlayColor: "#00000080",
+          zIndex: 10000,
+          width: 360,
+          showProgress: true,
+          skipBeacon: true,
+          overlayClickAction: false,
+          buttons: ["back", "skip", "primary"],
+        }}
+        styles={{
+          tooltip: {
+            borderRadius: 6,
+            padding: 16,
+            boxShadow: "none",
+            border: "1px solid #e0e0e0",
+          },
+          floater: { filter: "none" },
+        }}
+      />
       <ChartToolbar
         articles={sortedRows}
         filteredArticles={filteredArticles}
@@ -1406,6 +1545,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
         onCopyLink={handleCopyLink}
         onOpenLegend={() => setLegendOpen(true)}
         onOpenGlossary={() => setGlossaryOpen(true)}
+        onStartTour={handleStartTour}
       />
 
       <ChartTabBar
