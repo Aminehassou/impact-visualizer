@@ -8,14 +8,22 @@ class WikiWhoApi
   WIKI_WHO_SERVER_URL = 'https://wikiwho-api.wmcloud.org/'
   WIKI_WHO_API_PATH = '/api/v1.0.0-beta/'
 
-  # Languages supported by https://wikiwho-api.wmcloud.org/
-  # Keep in sync with scripts/words_per_token/sample.py::SUPPORTED_LANGS.
-  # Notes: `no` and `nb` are listed on the WikiWho homepage but the API
-  # returns 404 for them, so they're excluded. `ro` and `sh` exist on the
-  # service but weren't included in the May 2026 study; add when sampled.
+  # Languages served by https://wikiwho-api.wmcloud.org/ — the complete set
+  # of language prefixes the live API routes, verified end-to-end (URL
+  # resolution plus a real rev_content token fetch per language).
+  #
+  # Membership is NOT gated on words-per-token coverage. Languages absent
+  # from config/words_per_token.yml fall back to
+  # Wiki::TOKENS_PER_WORD_GLOBAL_FALLBACK, which exists for exactly this
+  # case; run scripts/words_per_token/sample.py to grow that table.
+  #
+  # Note: `nb` is listed on the WikiWho homepage but the API 404s for it, so
+  # it stays out. `no` is served and is included.
   AVAILABLE_WIKIPEDIAS = %w[
-    ar ce cs de dsb en es eu fa fi fr hi hu id it ja nl pl pt
-    ru sr sv tr uk vi zh
+    af als ar az be bg bn bs ce cs cy da de dsb el en eo es et eu fa fi
+    fr gl he hi hr hu ia id it ja ka kk ko ku lt lv mk ml mr ms mt ne nl
+    no pl pt ro ru sh simple sk sl sq sr sv sw ta te tg th tl tr uk ur uz
+    vec vi zh
   ].freeze
 
   def self.valid_wiki_language?(wiki)

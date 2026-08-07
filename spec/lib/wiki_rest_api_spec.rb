@@ -5,6 +5,28 @@ require 'rails_helper'
 describe WikiRestApi do
   let!(:wiki) { Wiki.default_wiki }
 
+  describe '.valid_wiki?' do
+    # /w/rest.php/v1/ ships with MediaWiki, so the history-counts endpoint
+    # answers on every Wikipedia. This client must not carry a language
+    # allowlist — it previously accepted only 11 languages and silently
+    # locked out wikis the API serves fine.
+    it 'accepts any Wikipedia language, not just a favoured few' do
+      %w[de ja ko th no simple be-tarask zh-yue].each do |language|
+        candidate = build(:wiki, language:, project: 'wikipedia')
+        expect(described_class).to be_valid_wiki(candidate),
+                                   "expected #{language}.wikipedia to be valid"
+      end
+    end
+
+    it 'accepts wikidata' do
+      expect(described_class).to be_valid_wiki(build(:wiki, project: 'wikidata'))
+    end
+
+    it 'rejects projects without these REST endpoints' do
+      expect(described_class).not_to be_valid_wiki(build(:wiki, project: 'wiktionary'))
+    end
+  end
+
   describe 'error handling and calls ApiErrorHandling method' do
     let(:subject) { described_class.new(wiki).get_page_edits_count(page_title: 'Jupiter') }
 

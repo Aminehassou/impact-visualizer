@@ -58,9 +58,26 @@ describe WikiWhoApi do
                          "Languages with words_per_token data but not in WikiWhoApi: #{missing.inspect}"
     end
 
-    it 'excludes Norwegian variants which 404 at the WikiWho API' do
-      expect(described_class::AVAILABLE_WIKIPEDIAS).not_to include('no')
+    it 'excludes `nb`, which 404s at the WikiWho API' do
+      # The WikiWho homepage links both Norwegian variants, but only `no`
+      # is actually routed by the API; `nb` 404s.
       expect(described_class::AVAILABLE_WIKIPEDIAS).not_to include('nb')
+      expect(described_class::AVAILABLE_WIKIPEDIAS).to include('no')
+    end
+
+    it 'only contains languages the Wiki model will accept' do
+      # AVAILABLE_WIKIPEDIAS is useless for any code the Wiki model's
+      # inclusion validation would reject outright.
+      unknown = described_class::AVAILABLE_WIKIPEDIAS - Wiki::LANGUAGES
+      expect(unknown).to eq([]),
+                         "Not valid Wiki languages: #{unknown.inspect}"
+    end
+
+    it 'matches the revision-count backend list' do
+      # Token attribution and revision counts are fetched for the same set
+      # of wikis; a wiki in one list but not the other silently degrades.
+      expect(described_class::AVAILABLE_WIKIPEDIAS)
+        .to eq(VisualizerToolsApi::AVAILABLE_WIKIPEDIAS)
     end
   end
 
