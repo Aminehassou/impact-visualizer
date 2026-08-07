@@ -3,7 +3,14 @@
 class WikiRestApi
   include ApiErrorHandling
 
-  AVAILABLE_WIKIPEDIAS = %w[en eu fa fr gl nl pt ru sv tr uk].freeze
+  # Projects exposing the MediaWiki REST API endpoints this client calls.
+  # Deliberately NOT gated on language: /w/rest.php/v1/ ships with MediaWiki
+  # itself, so the history-counts endpoint answers on every Wikipedia —
+  # verified by live probe across large, tiny, and legacy dashed-code wikis
+  # (be-tarask, zh-yue, bat-smg, …). An allowlist here would only lock out
+  # wikis the API serves fine. Wiki::LANGUAGES already rejects codes that
+  # aren't real Wikimedia languages, at the model layer.
+  AVAILABLE_PROJECTS = %w[wikipedia wikidata].freeze
 
   def initialize(wiki)
     @api_url = wiki.rest_api_url
@@ -12,8 +19,7 @@ class WikiRestApi
   end
 
   def self.valid_wiki?(wiki)
-    return true if wiki.project == 'wikidata'
-    wiki.project == 'wikipedia' && AVAILABLE_WIKIPEDIAS.include?(wiki.language)
+    AVAILABLE_PROJECTS.include?(wiki.project)
   end
 
   def get_page_edits_count(page_title:, from_rev_id: nil, to_rev_id: nil)
