@@ -46,15 +46,24 @@ except ImportError:
     )
     raise
 
-# Languages currently supported by https://wikiwho-api.wmcloud.org/
-# (verified via the WikiWho service homepage and live API probes). Keep
-# in sync with lib/wiki_who_api.rb::AVAILABLE_WIKIPEDIAS. The homepage
-# also links to `no`/`nb` but those return 404 in practice; `ro` and `sh`
-# work but were not in the May 2026 study — add when sampled.
+# Languages currently served by https://wikiwho-api.wmcloud.org/ (verified
+# via live API probes). Keep in sync with
+# lib/wiki_who_api.rb::AVAILABLE_WIKIPEDIAS. The homepage also links to
+# `nb`, but it returns 404 in practice, so it is excluded; `no` is served.
+#
+# Only a subset of these was measured in the May 2026 study (methodology
+# version 1) — config/words_per_token.yml is the record of what has
+# actually been sampled, and anything missing from it falls back to
+# Wiki::TOKENS_PER_WORD_GLOBAL_FALLBACK at runtime. Re-run with --all to
+# close the gap.
 SUPPORTED_LANGS = [
-    "ar", "ce", "cs", "de", "dsb", "en", "es", "eu", "fa", "fi",
-    "fr", "hi", "hu", "id", "it", "ja", "nl", "pl", "pt",
-    "ru", "sr", "sv", "tr", "uk", "vi", "zh",
+    "af", "als", "ar", "az", "be", "bg", "bn", "bs", "ce", "cs",
+    "cy", "da", "de", "dsb", "el", "en", "eo", "es", "et", "eu",
+    "fa", "fi", "fr", "gl", "he", "hi", "hr", "hu", "ia", "id",
+    "it", "ja", "ka", "kk", "ko", "ku", "lt", "lv", "mk", "ml",
+    "mr", "ms", "mt", "ne", "nl", "no", "pl", "pt", "ro", "ru",
+    "sh", "simple", "sk", "sl", "sq", "sr", "sv", "sw", "ta", "te",
+    "tg", "th", "tl", "tr", "uk", "ur", "uz", "vec", "vi", "zh",
 ]
 
 METHODOLOGY_VERSION = 1

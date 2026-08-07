@@ -45,17 +45,38 @@ ratio absorbs the markup overhead so the reader sees a sensible number.
 
 ## Languages covered
 
-All 27 Wikipedias supported by the live WikiWho service at
-`wikiwho-api.wmcloud.org` (verified against the service homepage):
+Two distinct sets matter here, and they are no longer the same size.
+
+**Served by WikiWho** — the 70 Wikipedias the live service at
+`wikiwho-api.wmcloud.org` routes, verified by live probe (URL
+resolution plus a real `rev_content` token fetch per language):
+
+```
+af, als, ar, az, be, bg, bn, bs, ce, cs, cy, da, de, dsb, el, en, eo,
+es, et, eu, fa, fi, fr, gl, he, hi, hr, hu, ia, id, it, ja, ka, kk,
+ko, ku, lt, lv, mk, ml, mr, ms, mt, ne, nl, no, pl, pt, ro, ru, sh,
+simple, sk, sl, sq, sr, sv, sw, ta, te, tg, th, tl, tr, uk, ur, uz,
+vec, vi, zh
+```
+
+This list is mirrored in `lib/wiki_who_api.rb::AVAILABLE_WIKIPEDIAS`,
+`lib/visualizer_tools_api.rb::AVAILABLE_WIKIPEDIAS`, and
+`scripts/words_per_token/sample.py::SUPPORTED_LANGS` — all three must
+be updated together when WikiWho's coverage changes. A spec asserts
+the first two stay identical.
+
+**Measured in this study** (methodology version 1, May 2026) — the 26
+languages with published ratios in `config/words_per_token.yml`:
 
 ```
 ar, ce, cs, de, dsb, en, es, eu, fa, fi, fr, hi, hu, id, it, ja, nl,
-no, pl, pt, ru, sr, sv, tr, uk, vi, zh
+pl, pt, ru, sr, sv, tr, uk, vi, zh
 ```
 
-This list is mirrored in `lib/wiki_who_api.rb::AVAILABLE_WIKIPEDIAS`
-and in `scripts/words_per_token/sample.py::SUPPORTED_LANGS` — both must
-be updated together when WikiWho's coverage changes.
+Token fetching is deliberately *not* gated on study coverage: the 44
+served-but-unmeasured languages fall back to
+`Wiki::TOKENS_PER_WORD_GLOBAL_FALLBACK` (3.0) until the study is
+refreshed. Re-run `sample.py --all` to close the gap.
 
 ## Sampling design
 
@@ -266,11 +287,19 @@ Sorted by overall median, ascending:
 
 ### Languages on the WikiWho service but not in this study
 
-The WikiWho homepage links to `no` and `nb` (Norwegian) but the API
-returns 404 for both. They are excluded from
-`AVAILABLE_WIKIPEDIAS`. Two languages — `ro` (Romanian) and `sh`
-(Serbo-Croatian) — *do* return data but were not in this round's
-sample list and so are not yet published; they should be added when
-the study is refreshed. WikiWho is gradually expanding language
-support, so periodic re-checks of the service homepage are worth
-doing.
+The WikiWho homepage links both Norwegian variants, but only `no` is
+routed by the API; `nb` returns 404 and is the sole documented
+exclusion from `AVAILABLE_WIKIPEDIAS`.
+
+WikiWho has expanded well past this study's sample list. 44 of the 70
+served languages — including `no`, `ro` (Romanian), `sh`
+(Serbo-Croatian), `ko`, `he`, `th`, and `simple` — return real token
+data but have no published ratio yet, so they run on the 3.0 global
+fallback. They should be sampled when the study is refreshed.
+
+Because the service keeps growing, re-probe rather than trusting this
+document: hit
+`https://wikiwho-api.wmcloud.org/<lang>/api/v1.0.0-beta/` for each
+candidate code (unsupported prefixes 404 at URL resolution), then
+confirm with a real `rev_content/rev_id/<rev>/` fetch — routing alone
+does not prove tokens are served.

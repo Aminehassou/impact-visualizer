@@ -6,11 +6,15 @@ class VisualizerToolsApi
   # Wikipedias for which the impact_visualizer_tools backend serves
   # revision-count lookups. Kept in sync with WikiWhoApi::AVAILABLE_WIKIPEDIAS
   # so any wiki we can pull token attribution for can also be data-generated;
-  # if the backend doesn't recognize a wiki, get_page_edits_count returns nil
-  # and the caller falls back to revisions_count: 0 rather than crashing.
+  # every entry below was verified against the live count_revisions.php
+  # endpoint. If the backend doesn't recognize a wiki, get_page_edits_count
+  # returns nil and the caller falls back to revisions_count: 0 rather than
+  # crashing.
   AVAILABLE_WIKIPEDIAS = %w[
-    ar ce cs de dsb en es eu fa fi fr gl hi hu id it ja nl pl pt
-    ru sr sv tr uk vi zh
+    af als ar az be bg bn bs ce cs cy da de dsb el en eo es et eu fa fi
+    fr gl he hi hr hu ia id it ja ka kk ko ku lt lv mk ml mr ms mt ne nl
+    no pl pt ro ru sh simple sk sl sq sr sv sw ta te tg th tl tr uk ur uz
+    vec vi zh
   ].freeze
 
   def initialize(wiki)
