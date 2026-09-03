@@ -22,12 +22,6 @@ describe ArticleTimeTravelService do
         .to raise_error(described_class::InvalidRequest, /At least one article/)
     end
 
-    it 'rejects more than MAX_ARTICLES' do
-      titles = Array.new(described_class::MAX_ARTICLES + 1) { |i| "Article #{i}" }
-      expect { service.call(article_titles: titles, start_year: 2016, end_year: 2020) }
-        .to raise_error(described_class::InvalidRequest, /At most 8 articles/)
-    end
-
     it 'rejects titles outside the active article bag' do
       expect { service.call(article_titles: ['Rainforest'], start_year: 2016, end_year: 2020) }
         .to raise_error(described_class::InvalidRequest, /Unknown articles: Rainforest/)
@@ -170,7 +164,7 @@ describe ArticleTimeTravelService do
     end
 
     it 'does not drop results when fanning out across threads' do
-      titles = Array.new(described_class::MAX_ARTICLES) do |i|
+      titles = Array.new(12) do |i|
         "Article #{i}".tap { |t| add_article(title: t, pageid: 100 + i) }
       end
       allow(stats_service).to receive(:get_article_size_at_date).and_return(1000)

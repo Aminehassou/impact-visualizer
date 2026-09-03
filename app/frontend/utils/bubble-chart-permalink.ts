@@ -1,7 +1,6 @@
 import type { XAxisKey, YAxisKey } from "../types/bubble-chart.type";
 import type { ChartTab } from "../components/chart-tab-bar.component";
 import {
-  MAX_TIME_TRAVEL_ARTICLES,
   MIN_TIME_TRAVEL_YEAR,
   TIME_TRAVEL_X_AXIS_KEYS,
 } from "./time-travel-vega";
@@ -255,10 +254,7 @@ export function decodeChartState(params: URLSearchParams): ChartUiState {
 
   const tta = params.get("tta");
   if (tta) {
-    state.timeTravelArticles = tta
-      .split("|")
-      .filter(Boolean)
-      .slice(0, MAX_TIME_TRAVEL_ARTICLES);
+    state.timeTravelArticles = tta.split("|").filter(Boolean);
   }
 
   const ttS = params.get("ttS");

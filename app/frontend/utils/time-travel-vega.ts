@@ -1,4 +1,4 @@
-import type { VisualizationSpec } from "vega-embed";
+import type { Result, VisualizationSpec } from "vega-embed";
 import type { XAxisKey } from "../types/bubble-chart.type";
 import type {
   TimeTravelRow,
@@ -9,7 +9,6 @@ import { MAX_CIRCLE_RADIUS } from "./bubble-chart-vega";
 import { SINGLE_COLOR_PALETTE, xAxisTitleForKey } from "./bubble-chart-utils";
 
 export const MIN_TIME_TRAVEL_YEAR = 2015;
-export const MAX_TIME_TRAVEL_ARTICLES = 8;
 export const PANEL_HEIGHT = 480;
 
 export const TIME_TRAVEL_X_AXIS_KEYS: XAxisKey[] = [
@@ -30,7 +29,6 @@ export const TIME_TRAVEL_X_AXIS_OPTIONS: AxisOption<XAxisKey>[] = [
 
 const SIZE_RANGES = {
   talk_size: [50, 1500] as [number, number],
-  other_article_size: [20, 600] as [number, number],
   lead_section_size: [30, 800] as [number, number],
   article_size: [20, 600] as [number, number],
 };
@@ -57,7 +55,6 @@ export function computeSharedScales(rows: TimeTravelRow[]): SharedScales {
   return {
     sizeDomains: {
       talk_size: [0, maxOf("talk_size")],
-      other_article_size: [0, maxOf("other_article_size")],
       lead_section_size: [0, maxOf("lead_section_size")],
       article_size: [0, maxOf("article_size")],
     },
@@ -86,12 +83,59 @@ export function buildTimeTravelRows(
       talk_size: snapshot?.talk_size ?? null,
       average_daily_views: snapshot?.average_daily_views ?? null,
       other_article_size: otherSnapshots[title]?.article_size ?? null,
+      other_lead_section_size: otherSnapshots[title]?.lead_section_size ?? null,
+      other_talk_size: otherSnapshots[title]?.talk_size ?? null,
+      other_average_daily_views:
+        otherSnapshots[title]?.average_daily_views ?? null,
       bubble_article_color: SINGLE_COLOR_PALETTE.article,
       bubble_lead_color: SINGLE_COLOR_PALETTE.lead,
       bubble_talk_color: SINGLE_COLOR_PALETTE.talk,
-      bubble_prev_color: SINGLE_COLOR_PALETTE.prevArticle,
     };
   });
+}
+
+export type ScreenPoint = { x: number; y: number };
+
+function findSceneItem(
+  scene: any,
+  article: string,
+  dx: number,
+  dy: number,
+): ScreenPoint | null {
+  if (scene.marktype === "group") {
+    for (const group of scene.items ?? []) {
+      for (const child of group.items ?? []) {
+        const hit = findSceneItem(
+          child,
+          article,
+          dx + (group.x ?? 0),
+          dy + (group.y ?? 0),
+        );
+        if (hit) return hit;
+      }
+    }
+    return null;
+  }
+  for (const item of scene.items ?? []) {
+    if (item.datum?.article === article && typeof item.x === "number") {
+      return { x: dx + item.x, y: dy + item.y };
+    }
+  }
+  return null;
+}
+
+export function locateArticle(
+  embedded: Result | null,
+  article: string,
+): ScreenPoint | null {
+  if (!embedded) return null;
+  const scenegraph = embedded.view.scenegraph() as any;
+  const point = findSceneItem(scenegraph.root, article, 0, 0);
+  const canvas = embedded.view.container()?.querySelector("canvas");
+  if (!point || !canvas) return null;
+  const rect = canvas.getBoundingClientRect();
+  const [originX, originY] = embedded.view.origin();
+  return { x: rect.left + originX + point.x, y: rect.top + originY + point.y };
 }
 
 function yScaleSpec(
@@ -142,8 +186,6 @@ function opacityEncoding(base: number) {
 
 export function buildTimeTravelSpec({
   rows,
-  year,
-  otherYear,
   scales,
   xAxisKey,
   xAxisMode,
@@ -152,8 +194,6 @@ export function buildTimeTravelSpec({
   showLabels,
 }: {
   rows: TimeTravelRow[];
-  year: number;
-  otherYear: number;
   scales: SharedScales;
   xAxisKey: XAxisKey;
   xAxisMode: "ranked" | "scaled";
@@ -253,26 +293,6 @@ export function buildTimeTravelSpec({
       },
       {
         transform: existing,
-        mark: {
-          type: "circle",
-          fill: null,
-          strokeDash: [4, 4],
-          strokeWidth: 1.5,
-        },
-        encoding: {
-          y: yEncoding,
-          size: sizeEncoding("other_article_size", scales),
-          stroke: {
-            field: "bubble_prev_color",
-            type: "nominal",
-            scale: null,
-            legend: null,
-          },
-          opacity: opacityEncoding(1),
-        },
-      },
-      {
-        transform: existing,
         mark: { type: "circle" },
         encoding: {
           y: yEncoding,
@@ -292,16 +312,6 @@ export function buildTimeTravelSpec({
           type: "circle",
           stroke: "white",
           strokeWidth: 1,
-          tooltip: {
-            signal: `{
-              title: '<div style="display:flex;flex-direction:column"><span style="font-weight:600">' + datum.article + '</span><span style="font-size:12px;color:#666;margin-top:2px">in ${year}</span></div>',
-              "Daily visits": isValid(datum.average_daily_views) ? format(datum.average_daily_views, ',') : 'n/a',
-              "Size": isValid(datum.article_size) ? format(datum.article_size, ',') : 'n/a',
-              "Size in ${otherYear}": isValid(datum.other_article_size) ? format(datum.other_article_size, ',') : 'n/a',
-              "Lead size": isValid(datum.lead_section_size) ? format(datum.lead_section_size, ',') : 'n/a',
-              "Talk size": isValid(datum.talk_size) ? format(datum.talk_size, ',') : 'n/a',
-            }`,
-          },
         },
         encoding: {
           y: yEncoding,
@@ -325,13 +335,6 @@ export function buildTimeTravelSpec({
           strokeDash: [3, 3],
           strokeWidth: 1.5,
           size: 400,
-          tooltip: {
-            signal: `{
-              title: datum.article,
-              "Status": 'Did not exist in ${year}',
-              "Created": datum.publication_date ? timeFormat(toDate(datum.publication_date), '%b %d, %Y') : 'unknown',
-            }`,
-          },
         },
         encoding: {
           y: yEncoding,

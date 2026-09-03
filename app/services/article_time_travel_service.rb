@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 class ArticleTimeTravelService
-  MAX_ARTICLES = 8
   MIN_YEAR = 2015
   MIN_PAGEVIEWS_DATE = Date.new(2015, 7, 1)
   THREADS_COUNT = 3
@@ -43,10 +42,6 @@ class ArticleTimeTravelService
   def validate_titles(article_titles)
     titles = Array(article_titles).map(&:to_s).uniq.reject(&:blank?)
     raise InvalidRequest, 'At least one article is required' if titles.empty?
-
-    if titles.size > MAX_ARTICLES
-      raise InvalidRequest, "At most #{MAX_ARTICLES} articles can be compared at once"
-    end
 
     reject_unknown_titles(titles)
     titles

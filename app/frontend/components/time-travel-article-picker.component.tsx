@@ -2,7 +2,6 @@ import React, { RefObject, useMemo, useState } from "react";
 import { List } from "react-window";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa6";
 import useOutsideClick from "../hooks/useOutsideClick";
-import { MAX_TIME_TRAVEL_ARTICLES } from "../utils/time-travel-vega";
 
 const ITEM_HEIGHT = 34;
 const LIST_HEIGHT = 300;
@@ -10,12 +9,11 @@ const LIST_HEIGHT = 300;
 interface PickerRowProps {
   titles: string[];
   selected: Set<string>;
-  atCap: boolean;
   onToggle: (title: string) => void;
 }
 
 function PickerRow(props: PickerRowProps): React.ReactElement | null {
-  const { titles, selected, atCap, onToggle } = props;
+  const { titles, selected, onToggle } = props;
   const { index, style } = props as unknown as {
     index: number;
     style: React.CSSProperties;
@@ -23,21 +21,11 @@ function PickerRow(props: PickerRowProps): React.ReactElement | null {
   const title = titles[index];
   if (!title) return null;
 
-  const isSelected = selected.has(title);
-  const isDisabled = atCap && !isSelected;
-
   return (
-    <label
-      style={style}
-      className={`PickerItem ${isDisabled ? "is-disabled" : ""}`}
-      title={
-        isDisabled ? `Maximum ${MAX_TIME_TRAVEL_ARTICLES} articles` : title
-      }
-    >
+    <label style={style} className="PickerItem" title={title}>
       <input
         type="checkbox"
-        checked={isSelected}
-        disabled={isDisabled}
+        checked={selected.has(title)}
         onChange={() => onToggle(title)}
       />
       <span className="PickerItemLabel">{title}</span>
@@ -61,7 +49,6 @@ const TimeTravelArticlePicker: React.FC<TimeTravelArticlePickerProps> = ({
   const containerRef = useOutsideClick(() => setOpen(false));
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
-  const atCap = selected.length >= MAX_TIME_TRAVEL_ARTICLES;
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -72,10 +59,13 @@ const TimeTravelArticlePicker: React.FC<TimeTravelArticlePickerProps> = ({
   const toggle = (title: string) => {
     if (selectedSet.has(title)) {
       onChange(selected.filter((t) => t !== title));
-    } else if (!atCap) {
+    } else {
       onChange([...selected, title]);
     }
   };
+
+  const unselectedInList = filtered.filter((title) => !selectedSet.has(title));
+  const selectAll = () => onChange([...selected, ...unselectedInList]);
 
   return (
     <div
@@ -89,7 +79,7 @@ const TimeTravelArticlePicker: React.FC<TimeTravelArticlePickerProps> = ({
         onClick={() => setOpen((prev) => !prev)}
       >
         <span>
-          Articles ({selected.length} of {MAX_TIME_TRAVEL_ARTICLES})
+          Articles ({selected.length} of {articleTitles.length})
         </span>
         {open ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />}
       </button>
@@ -114,7 +104,6 @@ const TimeTravelArticlePicker: React.FC<TimeTravelArticlePickerProps> = ({
               rowProps={{
                 titles: filtered,
                 selected: selectedSet,
-                atCap,
                 onToggle: toggle,
               }}
               overscanCount={10}
@@ -123,17 +112,24 @@ const TimeTravelArticlePicker: React.FC<TimeTravelArticlePickerProps> = ({
           )}
           <div className="PickerFooter">
             <span>
-              {selected.length} of {MAX_TIME_TRAVEL_ARTICLES} selected
+              {selected.length} of {articleTitles.length} selected
             </span>
-            {selected.length > 0 && (
-              <button
-                type="button"
-                className="ResetLink"
-                onClick={() => onChange([])}
-              >
-                Clear all
-              </button>
-            )}
+            <div className="PickerActions">
+              {unselectedInList.length > 0 && (
+                <button type="button" className="ResetLink" onClick={selectAll}>
+                  {search.trim() ? "Select all matching" : "Select all"}
+                </button>
+              )}
+              {selected.length > 0 && (
+                <button
+                  type="button"
+                  className="ResetLink"
+                  onClick={() => onChange([])}
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

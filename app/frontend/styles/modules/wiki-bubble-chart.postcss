@@ -1809,6 +1809,22 @@ $danger-fg: #c62828;
 }
 
 .TimeTravel {
+  .Explainer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    font-size: 14px;
+    font-style: italic;
+    color: $text-strong;
+    background: white;
+    border-bottom: 1px solid $border-faint;
+
+    svg {
+      flex: 0 0 auto;
+    }
+  }
+
   .Controls {
     background: white;
     border-bottom: 1px solid $border-grey;
@@ -1820,6 +1836,8 @@ $danger-fg: #c62828;
 
   .YearRow {
     display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
     gap: 12px;
   }
 
@@ -1834,6 +1852,8 @@ $danger-fg: #c62828;
   .ArticleRow {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    min-width: 260px;
     max-width: 452px;
     gap: 6px;
   }
@@ -1921,6 +1941,65 @@ $danger-fg: #c62828;
     overflow-y: hidden;
   }
 
+  .TimeTravelTooltip {
+    position: fixed;
+    pointer-events: none;
+    min-width: 200px;
+    padding: 10px 12px;
+    background: white;
+    border: 1px solid $border-light;
+    border-radius: 4px;
+    font-size: 13px;
+
+    .Title {
+      font-weight: 700;
+    }
+
+    .Subtitle {
+      margin-top: 2px;
+      font-size: 12px;
+      color: $text-muted;
+    }
+
+    .Rows {
+      display: flex;
+      flex-direction: column;
+      margin-top: 8px;
+      gap: 4px;
+    }
+
+    .Row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      white-space: nowrap;
+    }
+
+    .Label {
+      color: $text-secondary;
+    }
+
+    .Value {
+      font-weight: 600;
+    }
+
+    .Change {
+      margin-left: 4px;
+    }
+
+    .Change--up {
+      color: #2e7d32;
+    }
+
+    .Change--down {
+      color: $danger-fg;
+    }
+
+    .Change--flat {
+      color: $text-muted;
+    }
+  }
+
   .Panels--loading,
   .Panels--empty,
   .Panels--error {
@@ -1970,12 +2049,12 @@ $danger-fg: #c62828;
 
   .PickerPopover {
     position: absolute;
-    top: 100%;
+    bottom: 100%;
     left: 0;
     min-width: 320px;
     background: white;
     border: 1px solid $border-grey;
-    border-radius: 0 0 6px 6px;
+    border-radius: 6px 6px 0 0;
     z-index: 100;
   }
 
@@ -2003,11 +2082,6 @@ $danger-fg: #c62828;
     &:hover {
       background-color: #f0f4ff;
     }
-
-    &.is-disabled {
-      color: $text-muted;
-      cursor: not-allowed;
-    }
   }
 
   .PickerItemLabel {
@@ -2032,6 +2106,11 @@ $danger-fg: #c62828;
     font-size: 12px;
     color: $text-muted;
     border-top: 1px solid $border-faint;
+  }
+
+  .PickerActions {
+    display: flex;
+    gap: 12px;
   }
 }
 

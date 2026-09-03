@@ -1,5 +1,6 @@
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { BsInfoCircle } from "react-icons/bs";
 import type { Result } from "vega-embed";
 import Spinner from "./spinner.component";
 import AxisControls from "./axis-controls.component";
@@ -12,8 +13,10 @@ import {
   buildTimeTravelRows,
   buildTimeTravelSpec,
   computeSharedScales,
+  locateArticle,
   TIME_TRAVEL_X_AXIS_OPTIONS,
 } from "../utils/time-travel-vega";
+import type { ScreenPoint } from "../utils/time-travel-vega";
 import { compareArticlesByPublicationDateAsc } from "../utils/bubble-chart-utils";
 
 const FOUR_HOURS = 4 * 60 * 60 * 1000;
@@ -118,6 +121,11 @@ const TimeTravelPanel: React.FC<TimeTravelPanelProps> = ({
     end: null,
   });
   const hoveredRef = useRef<string | null>(null);
+  const [hovered, setHovered] = useState<{
+    article: string;
+    start: ScreenPoint | null;
+    end: ScreenPoint | null;
+  } | null>(null);
 
   const { data, isFetching, error } = useQuery({
     queryKey: [
@@ -210,18 +218,10 @@ const TimeTravelPanel: React.FC<TimeTravelPanelProps> = ({
     return {
       startYear: query.startYear,
       endYear: query.endYear,
-      startSpec: buildTimeTravelSpec({
-        ...common,
-        rows: startRows,
-        year: query.startYear,
-        otherYear: query.endYear,
-      }),
-      endSpec: buildTimeTravelSpec({
-        ...common,
-        rows: endRows,
-        year: query.endYear,
-        otherYear: query.startYear,
-      }),
+      startRows,
+      endRows,
+      startSpec: buildTimeTravelSpec({ ...common, rows: startRows }),
+      endSpec: buildTimeTravelSpec({ ...common, rows: endRows }),
     };
   }, [
     data,
@@ -241,12 +241,37 @@ const TimeTravelPanel: React.FC<TimeTravelPanelProps> = ({
       embedded.view.signal("hover_article", article);
       embedded.view.runAsync();
     }
+    setHovered(
+      article
+        ? {
+            article,
+            start: locateArticle(viewsRef.current.start, article),
+            end: locateArticle(viewsRef.current.end, article),
+          }
+        : null,
+    );
+  };
+
+  const registerView = (panel: "start" | "end", view: Result | null) => {
+    viewsRef.current[panel] = view;
+    hoveredRef.current = null;
+    setHovered(null);
   };
 
   const upToDate = sameQuery(query, selectedArticles, startYear, endYear);
 
   return (
     <div className="TimeTravel">
+      <div className="Explainer">
+        <BsInfoCircle size={24} aria-hidden="true" />
+        <span>
+          Time travel compares the same articles at two points in time. Pick two
+          years to see how each article's size, lead section, discussion page
+          and daily visits changed between them, then hover an article to read
+          its stats for both years at once.
+        </span>
+      </div>
+
       <TimeTravelControls
         articleTitles={articleTitles}
         selectedArticles={selectedArticles}
@@ -297,7 +322,7 @@ const TimeTravelPanel: React.FC<TimeTravelPanelProps> = ({
 
       {!query && !isFetching && (
         <div className="Panels--empty">
-          Pick up to 8 articles and choose two years, then select Fetch data.
+          Pick articles and choose two years, then select Fetch data.
         </div>
       )}
 
@@ -322,27 +347,33 @@ const TimeTravelPanel: React.FC<TimeTravelPanelProps> = ({
           <div className="Panels">
             <TimeTravelBubblePanel
               year={panels.startYear}
+              otherYear={panels.endYear}
               spec={panels.startSpec}
+              rows={panels.startRows}
+              showChange={panels.startYear > panels.endYear}
+              hoveredArticle={hovered?.article ?? null}
+              hoveredPosition={hovered?.start ?? null}
               onHover={handleHover}
-              onReady={(view) => {
-                viewsRef.current.start = view;
-              }}
+              onReady={(view) => registerView("start", view)}
             />
             <TimeTravelBubblePanel
               year={panels.endYear}
+              otherYear={panels.startYear}
               spec={panels.endSpec}
+              rows={panels.endRows}
+              showChange={panels.endYear > panels.startYear}
+              hoveredArticle={hovered?.article ?? null}
+              hoveredPosition={hovered?.end ?? null}
               onHover={handleHover}
-              onReady={(view) => {
-                viewsRef.current.end = view;
-              }}
+              onReady={(view) => registerView("end", view)}
             />
           </div>
 
           <div className="Footnote">
             * Bubbles are drawn from article, lead section and discussion page
-            sizes at each year. The dashed ring shows the article's size in the
-            other year. Quality assessment is not shown here because Wikipedia
-            only publishes present-day grades.
+            sizes at each year. Hovering an article opens its stats for both
+            years at once. Quality assessment is not shown here because
+            Wikipedia only publishes present-day grades.
           </div>
         </>
       )}

@@ -523,13 +523,6 @@ describe TopicsController do
       expect(response.parsed_body['error']).to match(/At least one article/)
     end
 
-    it 'returns 400 when more than eight articles are given' do
-      titles = Array.new(9) { |i| "Article #{i}" }
-      get_time_travel(articles: titles, start_year: 2016, end_year: 2020)
-      expect(response.status).to eq(400)
-      expect(response.parsed_body['error']).to match(/At most 8 articles/)
-    end
-
     it 'returns 400 naming a title outside the active article bag' do
       get_time_travel(articles: ['Rainforest'], start_year: 2016, end_year: 2020)
       expect(response.status).to eq(400)

@@ -70,15 +70,15 @@ const TimeTravelControls: React.FC<TimeTravelControlsProps> = ({
                 ))}
             </select>
           </label>
-        </div>
 
-        <div className="ArticleRow">
-          <span className="YearLabel">Articles to compare</span>
-          <TimeTravelArticlePicker
-            articleTitles={articleTitles}
-            selected={selectedArticles}
-            onChange={onSelectedArticlesChange}
-          />
+          <div className="ArticleRow">
+            <span className="YearLabel">Articles to compare</span>
+            <TimeTravelArticlePicker
+              articleTitles={articleTitles}
+              selected={selectedArticles}
+              onChange={onSelectedArticlesChange}
+            />
+          </div>
         </div>
 
         <div className="FetchRow">
@@ -94,7 +94,6 @@ const TimeTravelControls: React.FC<TimeTravelControlsProps> = ({
       </div>
 
       <div className="Note">
-        <BsInfoCircle size={16} aria-hidden="true" />
         <span>
           Wikimedia's pageview data begins in July 2015, so earlier years can't
           be compared. Sizes are measured on 31 December of each year, or today
