@@ -141,7 +141,13 @@ const TOUR_STEPS: Step[] = [
     target: '.WikiBubbleChart [data-tour="languages-tab"]',
     placement: "bottom",
     content:
-      "You can also compare articles in different linguistic versions and at different points in time.",
+      "The languages tab compares articles across their different linguistic versions.",
+  },
+  {
+    target: '.WikiBubbleChart [data-tour="time-travel-tab"]',
+    placement: "bottom",
+    content:
+      "And the Time travel tab compares the same articles at two points in time. Pick two years to see a chart for each one, side by side.",
   },
   {
     target: ".WikiBubbleChart",

@@ -109,6 +109,12 @@ $danger-fg: #c62828;
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
+    &.AxisControls--twoColumn {
+      @media (min-width: 768px) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
     &.AxisControls--horizontalOnly {
       grid-template-columns: 1fr;
     }

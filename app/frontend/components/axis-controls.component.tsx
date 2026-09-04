@@ -67,11 +67,14 @@ const AxisControls: React.FC<AxisControlsProps> = ({
 }) => {
   const yAxisId = `${idPrefix}-y-axis`;
   const xAxisId = `${idPrefix}-sort`;
+  const columnsClass = hideYAxis
+    ? "AxisControls--horizontalOnly"
+    : hideYAxisRange
+      ? "AxisControls--twoColumn"
+      : "";
 
   return (
-    <div
-      className={`AxisControls ${hideYAxis ? "AxisControls--horizontalOnly" : ""}`}
-    >
+    <div className={`AxisControls ${columnsClass}`}>
       {!hideYAxis && (
         <>
           <div className="FilterBox" data-tour="vertical-axis">
