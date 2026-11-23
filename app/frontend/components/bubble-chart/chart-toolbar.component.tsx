@@ -19,6 +19,7 @@ type AnalyticsRows = Parameters<typeof convertAnalyticsToCSV>[0];
 export interface ChartToolbarProps {
   articles: AnalyticsRows;
   filteredArticles: AnalyticsRows;
+  wiki?: { language: string; project: string };
   hasData: boolean;
   linkCopied: boolean;
   onSaveImage: () => void;
@@ -31,6 +32,7 @@ export interface ChartToolbarProps {
 const ChartToolbar: React.FC<ChartToolbarProps> = ({
   articles,
   filteredArticles,
+  wiki,
   hasData,
   linkCopied,
   onSaveImage,
@@ -45,7 +47,7 @@ const ChartToolbar: React.FC<ChartToolbarProps> = ({
       <CSVButton
         articles={articles}
         filteredArticles={filteredArticles}
-        csvConvert={convertAnalyticsToCSV}
+        csvConvert={(rows) => convertAnalyticsToCSV(rows, wiki)}
         filename="article-analytics"
       />
       <WikitextButton

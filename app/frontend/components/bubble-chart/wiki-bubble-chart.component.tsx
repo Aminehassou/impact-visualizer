@@ -931,6 +931,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
       <ChartToolbar
         articles={sortedRows}
         filteredArticles={filteredArticles}
+        wiki={wiki}
         hasData={hasData}
         linkCopied={linkCopied}
         onSaveImage={handleSaveImage}

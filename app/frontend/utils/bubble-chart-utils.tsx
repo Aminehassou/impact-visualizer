@@ -1,4 +1,4 @@
-import { escapeCSVSpecialCharacters } from "./search-utils";
+import { escapeCSVSpecialCharacters, getWikiUrl } from "./search-utils";
 import type {
   ArticleAnalytics,
   ArticleProtection,
@@ -124,14 +124,16 @@ function convertAnalyticsToCSV(
     publication_date: string | null;
     protection_summary?: string;
   }>,
+  wiki?: { language: string; project: string },
 ): string {
   let csvContent = "data:text/csv;charset=utf-8,";
   csvContent +=
-    "Article,Creation Date,Average Daily Views,Average Daily Views (prev year),Article Size,Article Size (prev year),Lead Section Size,Talk Size,Talk Size (prev year),Number of Editors,Incoming Links,Centrality,Linguistic Versions,Warning Tags,Images,Assessment Grade,Protections\n";
+    "Article,URL,Creation Date,Average Daily Views,Average Daily Views (prev year),Article Size,Article Size (prev year),Lead Section Size,Talk Size,Talk Size (prev year),Number of Editors,Incoming Links,Centrality,Linguistic Versions,Warning Tags,Images,Assessment Grade,Protections\n";
   rows.forEach((row) => {
     csvContent +=
       [
         escapeCSVSpecialCharacters(row.article),
+        escapeCSVSpecialCharacters(getWikiUrl(row.article, wiki)),
         row.publication_date ?? "",
         row.average_daily_views,
         row.prev_average_daily_views ?? "",
