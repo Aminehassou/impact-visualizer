@@ -6,8 +6,17 @@ export const TOUR_STEPS: Step[] = [
     target: ".WikiBubbleChart",
     placement: "center",
     title: "Welcome to Wikipedia Panorama",
-    content: "A visual way to explore Wikipedia articles",
-    locale: { skip: "No, thanks" },
+    content: (
+      <>
+        <p>A visual way to explore Wikipedia articles.</p>
+        <p>
+          A quick guided tour of the interface. It walks you through the chart,
+          its controls and the other tabs, and takes about a minute. You can
+          restart it any time with the &quot;Take the tour&quot; button.
+        </p>
+      </>
+    ),
+    locale: { skip: "No, thanks", nextWithProgress: "Start the tour" },
   },
   {
     target: ".WikiBubbleChart",

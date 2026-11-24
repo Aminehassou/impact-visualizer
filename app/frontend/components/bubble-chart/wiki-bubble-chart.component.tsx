@@ -905,12 +905,14 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
   const { run, stepIndex, startTour, handleEvent } = useOnboardingTour({
     hasData,
     onStepChange: (nextIndex) => {
+      setSelectedArticle(null);
       setActiveTab("overview");
       if (nextIndex === SIDEBAR_STEP_INDEX) setSidebarOpen(true);
     },
   });
 
   const handleStartTour = () => {
+    setSelectedArticle(null);
     setActiveTab("overview");
     setAdvancedOpen(false);
     startTour();
