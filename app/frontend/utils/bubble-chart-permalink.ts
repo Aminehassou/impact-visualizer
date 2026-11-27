@@ -5,9 +5,11 @@ import type {
   YAxisKey,
 } from "../types/bubble-chart.type";
 import { GRADE_KEYS } from "./bubble-chart-utils";
+import type { TimeTravelYAxisKey } from "../types/time-travel.type";
 import {
   MIN_TIME_TRAVEL_YEAR,
   TIME_TRAVEL_X_AXIS_KEYS,
+  TIME_TRAVEL_Y_AXIS_KEYS,
 } from "./time-travel-vega";
 
 export interface ChartUiState {
@@ -36,6 +38,7 @@ export interface ChartUiState {
   timeTravelEndYear: number;
   timeTravelXAxisKey: XAxisKey;
   timeTravelXAxisMode: "ranked" | "scaled";
+  timeTravelYAxisKey: TimeTravelYAxisKey;
   timeTravelYScaleType: "linear" | "log";
   timeTravelShowLabels: boolean;
 }
@@ -91,6 +94,7 @@ export const DEFAULT_CHART_UI_STATE: ChartUiState = {
   timeTravelEndYear: CURRENT_YEAR,
   timeTravelXAxisKey: "title",
   timeTravelXAxisMode: "ranked",
+  timeTravelYAxisKey: "average_daily_views",
   timeTravelYScaleType: "linear",
   timeTravelShowLabels: false,
 };
@@ -154,6 +158,8 @@ export function encodeChartState(state: ChartUiState): Record<string, string> {
     params.ttx = state.timeTravelXAxisKey;
   if (state.timeTravelXAxisMode !== "ranked")
     params.ttxm = state.timeTravelXAxisMode;
+  if (state.timeTravelYAxisKey !== "average_daily_views")
+    params.tty = state.timeTravelYAxisKey;
   if (state.timeTravelYScaleType !== "linear")
     params.ttys = state.timeTravelYScaleType;
   if (state.timeTravelShowLabels) params.ttlbl = "1";
@@ -284,6 +290,10 @@ export function decodeChartState(params: URLSearchParams): ChartUiState {
   if (ttxm === "scaled" || ttxm === "ranked") state.timeTravelXAxisMode = ttxm;
   if (state.timeTravelXAxisKey === "title")
     state.timeTravelXAxisMode = "ranked";
+
+  const tty = params.get("tty");
+  if (tty && (TIME_TRAVEL_Y_AXIS_KEYS as string[]).includes(tty))
+    state.timeTravelYAxisKey = tty as TimeTravelYAxisKey;
 
   const ttys = params.get("ttys");
   if (ttys === "log" || ttys === "linear") state.timeTravelYScaleType = ttys;

@@ -8,22 +8,22 @@ import TimeTravelControls from "./time-travel-controls.component";
 import TimeTravelBubblePanel from "./time-travel-bubble-panel.component";
 import TopicService from "../../../services/topic.service";
 import type { XAxisKey } from "../../../types/bubble-chart.type";
-import type { TimeTravelSnapshot } from "../../../types/time-travel.type";
+import type {
+  TimeTravelSnapshot,
+  TimeTravelYAxisKey,
+} from "../../../types/time-travel.type";
 import {
   buildTimeTravelRows,
   buildTimeTravelSpec,
   computeSharedScales,
   locateArticle,
   TIME_TRAVEL_X_AXIS_OPTIONS,
+  TIME_TRAVEL_Y_AXIS_OPTIONS,
 } from "../../../utils/time-travel-vega";
 import type { ScreenPoint } from "../../../utils/time-travel-vega";
 import { compareArticlesByPublicationDateAsc } from "../../../utils/bubble-chart-utils";
 
 const FOUR_HOURS = 4 * 60 * 60 * 1000;
-
-const Y_AXIS_OPTIONS = [
-  { value: "average_daily_views" as const, label: "Avg daily views" },
-];
 
 export type TimeTravelQuery = {
   articles: string[];
@@ -47,6 +47,8 @@ export interface TimeTravelPanelProps {
   onXAxisKeyChange: (key: XAxisKey) => void;
   xAxisMode: "ranked" | "scaled";
   onXAxisModeChange: (mode: "ranked" | "scaled") => void;
+  yAxisKey: TimeTravelYAxisKey;
+  onYAxisKeyChange: (key: TimeTravelYAxisKey) => void;
   yAxisScaleType: "linear" | "log";
   onYAxisScaleTypeChange: (type: "linear" | "log") => void;
   showLabels: boolean;
@@ -111,6 +113,8 @@ const TimeTravelPanel: React.FC<TimeTravelPanelProps> = ({
   onXAxisKeyChange,
   xAxisMode,
   onXAxisModeChange,
+  yAxisKey,
+  onYAxisKeyChange,
   yAxisScaleType,
   onYAxisScaleTypeChange,
   showLabels,
@@ -181,7 +185,7 @@ const TimeTravelPanel: React.FC<TimeTravelPanelProps> = ({
       publicationDates,
     );
 
-    const scales = computeSharedScales([...startRows, ...endRows]);
+    const scales = computeSharedScales([...startRows, ...endRows], yAxisKey);
 
     let xDomain: [number, number] | [string, string] | null = null;
     if (xAxisMode === "scaled" && xAxisKey !== "title") {
@@ -211,6 +215,7 @@ const TimeTravelPanel: React.FC<TimeTravelPanelProps> = ({
       xAxisKey,
       xAxisMode,
       xDomain,
+      yAxisKey,
       yAxisScaleType,
       showLabels,
     };
@@ -229,6 +234,7 @@ const TimeTravelPanel: React.FC<TimeTravelPanelProps> = ({
     publicationDates,
     xAxisKey,
     xAxisMode,
+    yAxisKey,
     yAxisScaleType,
     showLabels,
   ]);
@@ -290,9 +296,9 @@ const TimeTravelPanel: React.FC<TimeTravelPanelProps> = ({
           idPrefix="timetravel"
           hideYAxisRange
           xAxisOptions={TIME_TRAVEL_X_AXIS_OPTIONS}
-          yAxisOptions={Y_AXIS_OPTIONS}
-          yAxisKey="average_daily_views"
-          onYAxisKeyChange={() => undefined}
+          yAxisOptions={TIME_TRAVEL_Y_AXIS_OPTIONS}
+          yAxisKey={yAxisKey}
+          onYAxisKeyChange={onYAxisKeyChange}
           yAxisScaleType={yAxisScaleType}
           onYAxisScaleTypeChange={onYAxisScaleTypeChange}
           yAxisMinInput=""

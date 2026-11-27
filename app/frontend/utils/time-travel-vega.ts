@@ -3,6 +3,7 @@ import type { AxisOption, XAxisKey } from "../types/bubble-chart.type";
 import type {
   TimeTravelRow,
   TimeTravelSnapshot,
+  TimeTravelYAxisKey,
 } from "../types/time-travel.type";
 import { MAX_CIRCLE_RADIUS } from "./bubble-chart-vega";
 import { SINGLE_COLOR_PALETTE, xAxisTitleForKey } from "./bubble-chart-utils";
@@ -26,6 +27,21 @@ export const TIME_TRAVEL_X_AXIS_OPTIONS: AxisOption<XAxisKey>[] = [
   { value: "talk_size", label: "Discussion page size (Small-Large)" },
 ];
 
+export const TIME_TRAVEL_Y_AXIS_KEYS: TimeTravelYAxisKey[] = [
+  "average_daily_views",
+  "article_size",
+];
+
+export const TIME_TRAVEL_Y_AXIS_OPTIONS: AxisOption<TimeTravelYAxisKey>[] = [
+  { value: "average_daily_views", label: "Avg daily views" },
+  { value: "article_size", label: "Article size" },
+];
+
+const Y_AXIS_TITLES: Record<TimeTravelYAxisKey, string> = {
+  average_daily_views: "avg daily visits",
+  article_size: "article size (bytes)",
+};
+
 const SIZE_RANGES = {
   talk_size: [50, 1500] as [number, number],
   lead_section_size: [30, 800] as [number, number],
@@ -41,12 +57,15 @@ export type SharedScales = {
 
 // Both panels must share every scale, or the same value renders at a different
 // height and radius on each side and the comparison is meaningless.
-export function computeSharedScales(rows: TimeTravelRow[]): SharedScales {
+export function computeSharedScales(
+  rows: TimeTravelRow[],
+  yAxisKey: TimeTravelYAxisKey,
+): SharedScales {
   const present = rows.filter((row) => row.exists);
   const maxOf = (field: SizeField) =>
     Math.max(1, ...present.map((row) => row[field] ?? 0));
-  const views = present
-    .map((row) => row.average_daily_views)
+  const yValues = present
+    .map((row) => row[yAxisKey])
     .filter(
       (value): value is number => value !== null && Number.isFinite(value),
     );
@@ -58,8 +77,8 @@ export function computeSharedScales(rows: TimeTravelRow[]): SharedScales {
       article_size: [0, maxOf("article_size")],
     },
     yDomain: {
-      min: views.length ? Math.min(...views) : 0,
-      max: views.length ? Math.max(...views) : 1000,
+      min: yValues.length ? Math.min(...yValues) : 0,
+      max: yValues.length ? Math.max(...yValues) : 1000,
     },
   };
 }
@@ -189,6 +208,7 @@ export function buildTimeTravelSpec({
   xAxisKey,
   xAxisMode,
   xDomain,
+  yAxisKey,
   yAxisScaleType,
   showLabels,
 }: {
@@ -197,6 +217,7 @@ export function buildTimeTravelSpec({
   xAxisKey: XAxisKey;
   xAxisMode: "ranked" | "scaled";
   xDomain: [number, number] | [string, string] | null;
+  yAxisKey: TimeTravelYAxisKey;
   yAxisScaleType: "linear" | "log";
   showLabels: boolean;
 }): VisualizationSpec {
@@ -234,7 +255,7 @@ export function buildTimeTravelSpec({
     field: "y_pos",
     type: "quantitative" as const,
     scale: yScale,
-    axis: { title: "avg daily visits" },
+    axis: { title: Y_AXIS_TITLES[yAxisKey] },
   };
 
   const existing = [{ filter: "datum.exists" }];
@@ -251,7 +272,7 @@ export function buildTimeTravelSpec({
     params: [{ name: "hover_article", value: null }],
     transform: [
       {
-        calculate: `datum.exists ? datum.average_daily_views : ${yScale.domainMin}`,
+        calculate: `datum.exists ? datum.${yAxisKey} : ${yScale.domainMin}`,
         as: "y_pos",
       },
     ],

@@ -1,3 +1,5 @@
+type TimeTravelYAxisKey = "average_daily_views" | "article_size";
+
 type TimeTravelSnapshot = {
   article_size: number | null;
   lead_section_size: number | null;
@@ -28,4 +30,9 @@ type TimeTravelRow = {
   bubble_talk_color: string;
 };
 
-export type { TimeTravelSnapshot, TimeTravelResponse, TimeTravelRow };
+export type {
+  TimeTravelSnapshot,
+  TimeTravelResponse,
+  TimeTravelRow,
+  TimeTravelYAxisKey,
+};

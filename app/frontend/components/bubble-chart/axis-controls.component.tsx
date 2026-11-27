@@ -26,14 +26,14 @@ export const DEFAULT_X_AXIS_OPTIONS: AxisOption<XAxisKey>[] = [
   { value: "images_count", label: "Images (Low-High)" },
 ];
 
-export interface AxisControlsProps {
+export interface AxisControlsProps<Y extends string = YAxisKey> {
   idPrefix: string;
   hideYAxis?: boolean;
   hideYAxisRange?: boolean;
   xAxisOptions?: AxisOption<XAxisKey>[];
-  yAxisOptions?: AxisOption<YAxisKey>[];
-  yAxisKey: YAxisKey;
-  onYAxisKeyChange: (key: YAxisKey) => void;
+  yAxisOptions?: AxisOption<Y>[];
+  yAxisKey: Y;
+  onYAxisKeyChange: (key: Y) => void;
   yAxisScaleType: "linear" | "log";
   onYAxisScaleTypeChange: (type: "linear" | "log") => void;
   yAxisMinInput: string;
@@ -47,12 +47,12 @@ export interface AxisControlsProps {
   onXAxisModeChange: (mode: "ranked" | "scaled") => void;
 }
 
-const AxisControls: React.FC<AxisControlsProps> = ({
+function AxisControls<Y extends string = YAxisKey>({
   idPrefix,
   hideYAxis = false,
   hideYAxisRange = false,
   xAxisOptions = DEFAULT_X_AXIS_OPTIONS,
-  yAxisOptions = DEFAULT_Y_AXIS_OPTIONS,
+  yAxisOptions = DEFAULT_Y_AXIS_OPTIONS as AxisOption<Y>[],
   yAxisKey,
   onYAxisKeyChange,
   yAxisScaleType,
@@ -66,7 +66,7 @@ const AxisControls: React.FC<AxisControlsProps> = ({
   onXAxisKeyChange,
   xAxisMode,
   onXAxisModeChange,
-}) => {
+}: AxisControlsProps<Y>) {
   const yAxisId = `${idPrefix}-y-axis`;
   const xAxisId = `${idPrefix}-sort`;
   const columnsClass = hideYAxis
@@ -109,7 +109,7 @@ const AxisControls: React.FC<AxisControlsProps> = ({
                   className="SortSelect"
                   value={yAxisKey}
                   disabled={yAxisOptions.length === 1}
-                  onChange={(e) => onYAxisKeyChange(e.target.value as YAxisKey)}
+                  onChange={(e) => onYAxisKeyChange(e.target.value as Y)}
                 >
                   {yAxisOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -217,6 +217,6 @@ const AxisControls: React.FC<AxisControlsProps> = ({
       </div>
     </div>
   );
-};
+}
 
 export default AxisControls;

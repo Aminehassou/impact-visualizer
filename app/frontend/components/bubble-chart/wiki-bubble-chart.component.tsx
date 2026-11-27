@@ -25,6 +25,7 @@ import ChartToolbar from "./chart-toolbar.component";
 import ChartTabBar from "./chart-tab-bar.component";
 import TimeTravelPanel from "./time-travel/time-travel-panel.component";
 import type { TimeTravelQuery } from "./time-travel/time-travel-panel.component";
+import type { TimeTravelYAxisKey } from "../../types/time-travel.type";
 import ChartAggregateStats from "./chart-aggregate-stats.component";
 import type { ArticleRow } from "./article-detail-panel.component";
 import type {
@@ -203,6 +204,8 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
   const [timeTravelXAxisMode, setTimeTravelXAxisMode] = useState<
     "ranked" | "scaled"
   >(initialState.timeTravelXAxisMode);
+  const [timeTravelYAxisKey, setTimeTravelYAxisKey] =
+    useState<TimeTravelYAxisKey>(initialState.timeTravelYAxisKey);
   const [timeTravelYScaleType, setTimeTravelYScaleType] = useState<
     "linear" | "log"
   >(initialState.timeTravelYScaleType);
@@ -855,6 +858,7 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
       timeTravelEndYear,
       timeTravelXAxisKey,
       timeTravelXAxisMode,
+      timeTravelYAxisKey,
       timeTravelYScaleType,
       timeTravelShowLabels,
     });
@@ -1089,6 +1093,8 @@ export const WikiBubbleChart: React.FC<WikiBubbleChartProps> = ({
             onXAxisKeyChange={setTimeTravelXAxisKey}
             xAxisMode={timeTravelXAxisMode}
             onXAxisModeChange={setTimeTravelXAxisMode}
+            yAxisKey={timeTravelYAxisKey}
+            onYAxisKeyChange={setTimeTravelYAxisKey}
             yAxisScaleType={timeTravelYScaleType}
             onYAxisScaleTypeChange={setTimeTravelYScaleType}
             showLabels={timeTravelShowLabels}
