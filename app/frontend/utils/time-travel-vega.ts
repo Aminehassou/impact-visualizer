@@ -30,16 +30,19 @@ export const TIME_TRAVEL_X_AXIS_OPTIONS: AxisOption<XAxisKey>[] = [
 export const TIME_TRAVEL_Y_AXIS_KEYS: TimeTravelYAxisKey[] = [
   "average_daily_views",
   "article_size",
+  "edits_in_period",
 ];
 
 export const TIME_TRAVEL_Y_AXIS_OPTIONS: AxisOption<TimeTravelYAxisKey>[] = [
   { value: "average_daily_views", label: "Avg daily views" },
   { value: "article_size", label: "Article size" },
+  { value: "edits_in_period", label: "Edits in period" },
 ];
 
 const Y_AXIS_TITLES: Record<TimeTravelYAxisKey, string> = {
   average_daily_views: "avg daily visits",
   article_size: "article size (bytes)",
+  edits_in_period: "edits in period",
 };
 
 const SIZE_RANGES = {
@@ -88,9 +91,13 @@ export function buildTimeTravelRows(
   snapshots: Record<string, TimeTravelSnapshot | null>,
   otherSnapshots: Record<string, TimeTravelSnapshot | null>,
   publicationDates: Record<string, string | null>,
+  isEndPanel: boolean,
 ): TimeTravelRow[] {
   return titles.map((title, index) => {
     const snapshot = snapshots[title] ?? null;
+    const otherSnapshot = otherSnapshots[title] ?? null;
+    const endSnapshot = isEndPanel ? snapshot : otherSnapshot;
+    const editsInPeriod = endSnapshot?.edits_in_period ?? null;
     return {
       article: title,
       idx: index + 1,
@@ -100,11 +107,14 @@ export function buildTimeTravelRows(
       lead_section_size: snapshot?.lead_section_size ?? null,
       talk_size: snapshot?.talk_size ?? null,
       average_daily_views: snapshot?.average_daily_views ?? null,
+      edits_in_period: snapshot && (isEndPanel ? editsInPeriod : 0),
+      edits_in_period_capped: endSnapshot?.edits_in_period_capped ?? false,
       other_article_size: otherSnapshots[title]?.article_size ?? null,
       other_lead_section_size: otherSnapshots[title]?.lead_section_size ?? null,
       other_talk_size: otherSnapshots[title]?.talk_size ?? null,
       other_average_daily_views:
         otherSnapshots[title]?.average_daily_views ?? null,
+      other_edits_in_period: otherSnapshot && (isEndPanel ? 0 : editsInPeriod),
       bubble_article_color: SINGLE_COLOR_PALETTE.article,
       bubble_lead_color: SINGLE_COLOR_PALETTE.lead,
       bubble_talk_color: SINGLE_COLOR_PALETTE.talk,
@@ -272,7 +282,10 @@ export function buildTimeTravelSpec({
     params: [{ name: "hover_article", value: null }],
     transform: [
       {
-        calculate: `datum.exists ? datum.${yAxisKey} : ${yScale.domainMin}`,
+        calculate:
+          yAxisScaleType === "log"
+            ? `datum.exists ? max(datum.${yAxisKey} || 0, ${yScale.domainMin}) : ${yScale.domainMin}`
+            : `datum.exists ? datum.${yAxisKey} : ${yScale.domainMin}`,
         as: "y_pos",
       },
     ],

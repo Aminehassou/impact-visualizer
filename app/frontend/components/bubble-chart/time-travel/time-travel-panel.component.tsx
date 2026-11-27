@@ -177,12 +177,14 @@ const TimeTravelPanel: React.FC<TimeTravelPanelProps> = ({
       startSnapshots,
       endSnapshots,
       publicationDates,
+      false,
     );
     const endRows = buildTimeTravelRows(
       ordered,
       endSnapshots,
       startSnapshots,
       publicationDates,
+      true,
     );
 
     const scales = computeSharedScales([...startRows, ...endRows], yAxisKey);
@@ -273,8 +275,9 @@ const TimeTravelPanel: React.FC<TimeTravelPanelProps> = ({
         <span>
           Time travel compares the same articles at two points in time. Pick two
           years to see how each article's size, lead section, discussion page
-          and daily visits changed between them, then hover an article to read
-          its stats for both years at once.
+          and daily visits changed between them, and how many edits were made in
+          between, then hover an article to read its stats for both years at
+          once.
         </span>
       </div>
 

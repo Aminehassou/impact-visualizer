@@ -77,20 +77,26 @@ class ArticleTimeTravelService
       return empty_snapshots(start_year, end_year)
     end
 
-    [start_year, end_year].to_h { |year| [year.to_s, snapshot(article, year)] }
+    start_snapshot, end_snapshot = [start_year, end_year].map { |year| snapshot(article, year) }
+    start_rev_id = start_snapshot&.delete(:revision_id)
+    end_rev_id = end_snapshot&.delete(:revision_id)
+    end_snapshot&.merge!(edits_in_period(article, start_year, start_rev_id, end_rev_id))
+
+    { start_year.to_s => start_snapshot, end_year.to_s => end_snapshot }
   end
 
   def snapshot(article, year)
     date = snapshot_date(year)
     return nil unless existed_at?(article, date)
 
-    article_size = fetch(:size, article) do
-      @article_stats_service.get_article_size_at_date(article:, date:)
+    revision = fetch(:revision, article) do
+      @article_stats_service.get_revision_at_date(article:, date:)
     end
-    return nil if article_size.nil?
+    return nil unless revision && revision['size']
 
     {
-      article_size:,
+      revision_id: revision['revid'],
+      article_size: revision['size'],
       lead_section_size: fetch(:lead_section_size, article) do
         @article_stats_service.get_lead_section_size_at_date(article:, date:)
       end,
@@ -110,6 +116,30 @@ class ArticleTimeTravelService
         end_year: year, end_month: date.month, end_day: date.day
       )&.round
     end
+  end
+
+  def edits_in_period(article, start_year, start_rev_id, end_rev_id)
+    return edits_result(0) if start_rev_id == end_rev_id
+
+    created_in_period = !existed_at?(article, snapshot_date(start_year))
+    from_rev_id = created_in_period ? article.first_revision_id : start_rev_id
+    return edits_result(nil) unless from_rev_id
+    return edits_result(1) if from_rev_id == end_rev_id
+
+    count_edits(article, from_rev_id, end_rev_id, created_in_period ? 2 : 1)
+  end
+
+  def count_edits(article, from_rev_id, to_rev_id, excluded_in_period)
+    result = fetch(:edits_in_period, article) do
+      @article_stats_service.get_edits_count_between(article:, from_rev_id:, to_rev_id:)
+    end
+    return edits_result(nil) unless result
+
+    edits_result(result[:count] + excluded_in_period, capped: result[:capped])
+  end
+
+  def edits_result(count, capped: false)
+    { edits_in_period: count, edits_in_period_capped: capped }
   end
 
   def existed_at?(article, date)

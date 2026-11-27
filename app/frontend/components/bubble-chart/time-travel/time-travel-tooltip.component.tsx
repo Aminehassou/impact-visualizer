@@ -83,23 +83,37 @@ const TimeTravelTooltip: React.FC<TimeTravelTooltipProps> = ({
 
       <div className="Rows">
         {row.exists ? (
-          STATS.map(({ label, field, otherField }) => {
-            const value = row[field];
-            const delta = showChange ? change(value, row[otherField]) : null;
-            return (
-              <div className="Row" key={field}>
-                <span className="Label">{label}</span>
+          <>
+            {STATS.map(({ label, field, otherField }) => {
+              const value = row[field];
+              const delta = showChange ? change(value, row[otherField]) : null;
+              return (
+                <div className="Row" key={field}>
+                  <span className="Label">{label}</span>
+                  <span className="Value">
+                    {value === null ? "n/a" : value.toLocaleString("en-US")}
+                    {delta && (
+                      <span className={`Change Change--${delta.modifier}`}>
+                        {delta.label}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
+            {showChange && (
+              <div className="Row">
+                <span className="Label">Edits since {otherYear}</span>
                 <span className="Value">
-                  {value === null ? "n/a" : value.toLocaleString("en-US")}
-                  {delta && (
-                    <span className={`Change Change--${delta.modifier}`}>
-                      {delta.label}
-                    </span>
-                  )}
+                  {row.edits_in_period === null
+                    ? "n/a"
+                    : `${row.edits_in_period.toLocaleString("en-US")}${
+                        row.edits_in_period_capped ? "+" : ""
+                      }`}
                 </span>
               </div>
-            );
-          })
+            )}
+          </>
         ) : (
           <>
             <div className="Row">

@@ -196,6 +196,32 @@ describe ArticleStatsService do
     end
   end
 
+  describe '#get_edits_count_between' do
+    let(:rest_api) { instance_double(WikiRestApi) }
+    let(:article) { build(:article, title: 'Earth') }
+    let(:article_stats_service) { described_class.new(wiki) }
+
+    def edits_count
+      article_stats_service.get_edits_count_between(article:, from_rev_id: 1, to_rev_id: 2)
+    end
+
+    before { allow(WikiRestApi).to receive(:new).and_return(rest_api) }
+
+    it 'returns the count and the cap flag' do
+      allow(rest_api).to receive(:get_page_edits_count)
+        .with(page_title: 'Earth', from_rev_id: 1, to_rev_id: 2)
+        .and_return({ 'count' => 40, 'limit' => false }.to_hashugar)
+
+      expect(edits_count).to eq(count: 40, capped: false)
+    end
+
+    it 'returns nil when the request fails' do
+      allow(rest_api).to receive(:get_page_edits_count).and_raise(Faraday::ServerError)
+
+      expect(edits_count).to be_nil
+    end
+  end
+
   describe '#weighted_revision_quality' do
     let!(:article_stats_service) { described_class.new(wiki) }
 

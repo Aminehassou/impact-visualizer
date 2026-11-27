@@ -14,6 +14,7 @@ class ArticleStatsService
     @visualizer_tools_api = VisualizerToolsApi.new(wiki)
     @lift_wing_api = LiftWingApi.new(wiki) if LiftWingApi.valid_wiki?(wiki)
     @wikimedia_pageviews_api = WikimediaPageviewsApi.new(wiki)
+    @wiki_rest_api = WikiRestApi.new(wiki) if WikiRestApi.valid_wiki?(wiki)
     # Per-instance cache of (pageid, date) → revision. Both
     # get_article_size_at_date and get_lead_section_size_at_date look
     # up the same revision for end_date on every analytics run; this
@@ -177,15 +178,29 @@ class ArticleStatsService
   # calls per article, each ending in an article.reload — ~59k extra
   # DB round-trips, plus a per-call get_page_info API hit for any
   # article in the missing-with-title state.
-  def get_article_size_at_date(article:, date: Date.current)
+  def get_revision_at_date(article:, date: Date.current)
     pageid = article.pageid
     return nil unless pageid
 
-    revision = cached_revision_at(pageid:, date:)
+    cached_revision_at(pageid:, date:)
+  end
+
+  def get_article_size_at_date(article:, date: Date.current)
+    revision = get_revision_at_date(article:, date:)
 
     revision ? revision['size'] : nil
   rescue StandardError => e
     puts "Error fetching article size for #{article.id || article}: #{e.message}"
+    nil
+  end
+
+  def get_edits_count_between(article:, from_rev_id:, to_rev_id:)
+    return nil unless @wiki_rest_api && article.title.present?
+
+    response = @wiki_rest_api.get_page_edits_count(page_title: article.title, from_rev_id:, to_rev_id:)
+    { count: response['count'].to_i, capped: response['limit'] == true }
+  rescue StandardError => e
+    Rails.logger.error("[ArticleStatsService] Error fetching edits count for #{article.id || article}: #{e.message}")
     nil
   end
 
